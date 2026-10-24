@@ -1,3 +1,4 @@
+import type { IntelligenceSnapshot } from './intelligence.js';
 /** Commercial contracts are independent of the coding-provider protocol. */
 export const EMPLOYEES = [
   {
@@ -25,6 +26,11 @@ export type TaskStatus =
 export type EmployeeStatus =
   'paused' | 'available' | 'working' | 'awaiting_approval' | 'blocked' | 'error';
 export interface SalesTask {
+  workflowId?: string | null;
+  stage?: 'plan' | 'work' | 'summary' | null;
+  dependencyIds?: string[];
+  model?: string | null;
+  durationMs?: number | null;
   id: string;
   employeeId: EmployeeId;
   kind: TaskKind;
@@ -65,6 +71,7 @@ export interface SalesEvent {
   detail: string;
 }
 export interface SalesSnapshot {
+  intelligence?: IntelligenceSnapshot;
   version: 1;
   suspended: boolean;
   inference: { connected: boolean; provider: string; message: string };

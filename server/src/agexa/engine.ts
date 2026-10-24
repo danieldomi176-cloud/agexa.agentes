@@ -13,6 +13,15 @@ import type {
   SalesTask,
 } from '../../../core/src/agexa.js';
 import { EMPLOYEES, SALES_OBJECTIVE, salesCharacterId } from '../../../core/src/agexa.js';
+import type {
+  AgexaKnowledge,
+  IntelligenceConfig,
+  OperationalResult,
+  SalesWorkflow,
+} from '../../../core/src/intelligence.js';
+import { PLAN_ORDER } from '../../../core/src/intelligence.js';
+import { CommercialMemory } from './memory.js';
+import { OllamaInferenceAdapter } from './ollama.js';
 
 export class SalesError extends Error {
   constructor(
@@ -40,6 +49,9 @@ const text = (value: unknown): string => (typeof value === 'string' ? value : ''
 export class SalesEngine extends EventEmitter {
   private readonly db: DatabaseSync;
   private readonly lock: string;
+  private readonly memory: CommercialMemory;
+  private readonly inference: InferenceAdapter;
+  private healthTimer: ReturnType<typeof setInterval> | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
   private readonly active = new Map<string, AbortController>();
   private closed = false;
@@ -47,7 +59,7 @@ export class SalesEngine extends EventEmitter {
 
   constructor(
     readonly directory: string,
-    private readonly inference: InferenceAdapter = new DisconnectedInference(),
+    inference?: InferenceAdapter,
   ) {
     super();
     fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
@@ -70,7 +82,14 @@ export class SalesEngine extends EventEmitter {
         CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL,
           employeeId TEXT, taskId TEXT, action TEXT NOT NULL, detail TEXT NOT NULL);
         INSERT OR IGNORE INTO settings VALUES ('suspended','0');
-        PRAGMA user_version=1;`);
+        `);
+      this.memory = new CommercialMemory(this.db);
+      // Tests and the original phase-two API may explicitly inject another adapter.
+      this.inference = inference ?? new DisconnectedInference();
+      if (this.inference instanceof OllamaInferenceAdapter) {
+        this.inference.configure(this.memory.config());
+        this.inference.setKnowledge(() => this.memory.knowledge());
+      }
       for (const employee of EMPLOYEES)
         this.db.prepare('INSERT OR IGNORE INTO employees(id) VALUES (?)').run(employee.id);
       // Crash recovery never replays an uncertain inference automatically.
@@ -152,6 +171,7 @@ export class SalesEngine extends EventEmitter {
     return {
       ...row,
       input: JSON.parse(row.input as string),
+      dependencyIds: JSON.parse(String(row.dependencyIds ?? '[]')),
       result: row.result ? JSON.parse(row.result as string) : null,
     } as unknown as SalesTask;
   }
@@ -178,6 +198,9 @@ export class SalesEngine extends EventEmitter {
       const current = this.db
         .prepare("SELECT id FROM tasks WHERE employeeId=? AND status='running' LIMIT 1")
         .get(definition.id);
+      const last = this.db
+        .prepare('SELECT status FROM tasks WHERE employeeId=? ORDER BY rowid DESC LIMIT 1')
+        .get(definition.id);
       return {
         ...definition,
         enabled,
@@ -191,7 +214,7 @@ export class SalesEngine extends EventEmitter {
               ? 'awaiting_approval'
               : counts.blocked
                 ? 'blocked'
-                : counts.error
+                : last?.status === 'error'
                   ? 'error'
                   : 'available',
         currentTask: current ? String(current.id) : null,
@@ -203,12 +226,25 @@ export class SalesEngine extends EventEmitter {
     return {
       version: 1,
       suspended: this.suspended,
+      ...(this.inference instanceof OllamaInferenceAdapter
+        ? {
+            intelligence: {
+              config: this.memory.config(),
+              status: this.inference.status,
+              knowledge: this.memory.knowledge(),
+              workflows: this.memory.workflows(),
+              memories: this.memory.recent(),
+            },
+          }
+        : {}),
       inference: {
         connected: this.inference.connected,
         provider: this.inference.name,
         message: this.inference.connected
           ? 'Fornecedor ligado'
-          : 'Configurados, sem inferência real. Ollama depende da Fase 3.',
+          : this.inference instanceof OllamaInferenceAdapter
+            ? (this.inference.status.error ?? 'Ollama indisponível')
+            : 'Configurados, sem inferência real. Ollama depende da Fase 3.',
       },
       employees,
       tasks,
@@ -221,6 +257,16 @@ export class SalesEngine extends EventEmitter {
 
   create(input: CreateSalesTask): SalesTask {
     this.validate(input);
+    if (
+      Number(
+        this.db
+          .prepare(
+            "SELECT count(*) as n FROM tasks WHERE status IN ('queued','blocked','awaiting_approval','running')",
+          )
+          .get()?.n,
+      ) >= 100
+    )
+      throw new SalesError('Limite de 100 tarefas pendentes atingido');
     const task = this.transaction(() => this.insert(input));
     this.changed();
     return task;
@@ -300,17 +346,22 @@ export class SalesEngine extends EventEmitter {
     });
     this.changed();
   }
+  private markCancelled(id: string, error: string | null): void {
+    const task = this.getTask(id);
+    this.active.get(id)?.abort();
+    const duration = task.startedAt ? Math.max(0, Date.now() - Date.parse(task.startedAt)) : null;
+    this.db
+      .prepare(
+        "UPDATE tasks SET status='cancelled', finishedAt=?, error=?, durationMs=? WHERE id=?",
+      )
+      .run(now(), error, duration, id);
+  }
   private interrupt(employeeId: EmployeeId): void {
     const rows = this.db
       .prepare("SELECT id FROM tasks WHERE employeeId=? AND status='running'")
       .all(employeeId);
     for (const row of rows) {
-      this.active.get(String(row.id))?.abort();
-      this.db
-        .prepare(
-          "UPDATE tasks SET status='cancelled', finishedAt=?, error='Interrompida pelo CEO' WHERE id=?",
-        )
-        .run(now(), String(row.id));
+      this.markCancelled(String(row.id), 'Interrompida pelo CEO');
       this.event(
         'task_cancelled',
         'Interrompida pelo CEO; resultado tardio será descartado',
@@ -335,10 +386,7 @@ export class SalesEngine extends EventEmitter {
       const task = this.getTask(id);
       if (['completed', 'error', 'cancelled'].includes(task.status))
         throw new SalesError('Tarefa já terminou');
-      this.active.get(id)?.abort();
-      this.db
-        .prepare("UPDATE tasks SET status='cancelled', finishedAt=? WHERE id=?")
-        .run(now(), id);
+      this.markCancelled(id, null);
       this.event('task_cancelled', 'Cancelada pelo CEO', task.employeeId, id);
     });
     this.changed();
@@ -369,7 +417,299 @@ export class SalesEngine extends EventEmitter {
     return result;
   }
 
+  async refreshIntelligence(): Promise<void> {
+    if (!(this.inference instanceof OllamaInferenceAdapter)) return;
+    await this.inference.probe();
+    if (!this.closed) this.changed();
+  }
+  configureIntelligence(config: IntelligenceConfig): void {
+    if (!(this.inference instanceof OllamaInferenceAdapter))
+      throw new SalesError('Adaptador Ollama não ativo', 400);
+    if (this.active.size)
+      throw new SalesError('Aguardar ou cancelar inferências antes de alterar o modelo');
+    this.inference.configure(config);
+    this.transaction(() => {
+      this.memory.saveConfig(config);
+      this.event(
+        'intelligence_configured',
+        'Configuração Ollama alterada pelo CEO; requer verificação real',
+      );
+    });
+    this.changed();
+  }
+  saveKnowledge(value: AgexaKnowledge): void {
+    if (this.active.size)
+      throw new SalesError('Aguardar inferências em curso antes de alterar factos');
+    this.transaction(() => {
+      this.memory.saveKnowledge(value);
+      this.event('knowledge_confirmed', 'Factos comerciais confirmados pelo CEO');
+    });
+    this.changed();
+  }
+  addDecision(content: string, employeeId: EmployeeId | null = null): void {
+    if (!content.trim() || content.length > 2000)
+      throw new SalesError('Decisão deve conter 1–2000 caracteres', 400);
+    if (employeeId && !EMPLOYEES.some((e) => e.id === employeeId))
+      throw new SalesError('Funcionário inválido', 400);
+    this.transaction(() => {
+      this.memory.add('decision', content, employeeId);
+      this.event('decision_recorded', 'Decisão autorizada pelo CEO', employeeId);
+    });
+    this.changed();
+  }
+  commandNexus(goal: string, input: Record<string, unknown>): SalesWorkflow {
+    if (this.suspended) throw new SalesError('Retomar operações antes de pedir um plano');
+    if (
+      Number(
+        this.db
+          .prepare(
+            "SELECT count(*) as n FROM tasks WHERE status IN ('queued','blocked','awaiting_approval','running')",
+          )
+          .get()?.n,
+      ) >= 100
+    )
+      throw new SalesError('Limite de 100 tarefas pendentes atingido');
+    const request: CreateSalesTask = {
+      employeeId: 'nexus',
+      kind: 'ai_request',
+      objective: goal,
+      input,
+    };
+    this.validate(request);
+    if (
+      Number(
+        this.db
+          .prepare(
+            "SELECT count(*) as n FROM workflows WHERE status IN ('planning','proposed','running')",
+          )
+          .get()?.n,
+      ) >= 5
+    )
+      throw new SalesError('Limite de cinco ordens Nexus pendentes');
+    const workflow = this.transaction(() => {
+      const id = randomUUID();
+      const task = this.insert(request);
+      const config = this.memory.config();
+      this.db
+        .prepare(
+          'INSERT INTO workflows(id,goal,input,status,planTaskId,createdAt,taskBudget,inferenceBudget) VALUES (?,?,?,?,?,?,?,?)',
+        )
+        .run(
+          id,
+          goal,
+          JSON.stringify(input),
+          'planning',
+          task.id,
+          now(),
+          config.maxTasks,
+          config.maxInferences,
+        );
+      this.db.prepare("UPDATE tasks SET workflowId=?, stage='plan' WHERE id=?").run(id, task.id);
+      this.db.prepare("UPDATE employees SET enabled=1 WHERE id='nexus'").run();
+      this.event(
+        'nexus_command',
+        'Nexus irá propor um plano; distribuição exige aprovação',
+        'nexus',
+        task.id,
+      );
+      return this.memory.workflow(id);
+    });
+    this.changed();
+    return workflow;
+  }
+  approveWorkflow(id: string): void {
+    if (this.suspended) throw new SalesError('Retomar operações antes de executar o plano');
+    this.transaction(() => {
+      const workflow = this.memory.workflow(id);
+      if (workflow.status !== 'proposed') throw new SalesError('O plano não aguarda aprovação');
+      const plan = this.getTask(workflow.planTaskId).result?.plan as OperationalResult['plan'];
+      if (
+        !Array.isArray(plan) ||
+        plan.length !== 7 ||
+        plan.some((step, index) => step.employeeId !== PLAN_ORDER[index] || !step.objective)
+      )
+        throw new SalesError('Plano Nexus inválido');
+      const config = this.memory.config();
+      if (
+        Math.min(workflow.taskBudget, config.maxTasks) < 9 ||
+        Math.min(workflow.inferenceBudget, config.maxInferences) < 9
+      )
+        throw new SalesError('Orçamento insuficiente para nove etapas');
+      const pending = Number(
+        this.db
+          .prepare(
+            "SELECT count(*) as n FROM tasks WHERE status IN ('queued','blocked','awaiting_approval','running')",
+          )
+          .get()?.n,
+      );
+      if (pending + 8 > 100) throw new SalesError('Fila cheia; aguardar tarefas pendentes');
+      let previous = workflow.planTaskId;
+      for (const step of [
+        ...plan,
+        {
+          employeeId: 'nexus' as const,
+          objective: 'Sintetizar os resultados da equipa e recomendar próximas ações ao CEO',
+        },
+      ]) {
+        const task = this.insert({
+          employeeId: step.employeeId,
+          kind: 'ai_request',
+          objective: step.objective,
+          input: workflow.input,
+        });
+        this.db
+          .prepare('UPDATE tasks SET workflowId=?, stage=?, dependencyIds=? WHERE id=?')
+          .run(
+            id,
+            step.employeeId === 'nexus' ? 'summary' : 'work',
+            JSON.stringify([previous]),
+            task.id,
+          );
+        this.db.prepare('UPDATE employees SET enabled=1 WHERE id=?').run(step.employeeId);
+        this.event(
+          'task_delegated',
+          `Dependência explícita: ${previous}`,
+          step.employeeId,
+          task.id,
+        );
+        previous = task.id;
+      }
+      this.db
+        .prepare("UPDATE workflows SET status='running', approvedAt=? WHERE id=?")
+        .run(now(), id);
+      this.event(
+        'plan_approved',
+        'CEO aprovou oito novas tarefas e habilitou a equipa',
+        'nexus',
+        workflow.planTaskId,
+      );
+    });
+    this.changed();
+  }
+  cancelWorkflow(id: string): void {
+    this.transaction(() => {
+      const workflow = this.memory.workflow(id);
+      if (['completed', 'cancelled'].includes(workflow.status))
+        throw new SalesError('Ordem já terminou');
+      for (const row of this.db
+        .prepare(
+          "SELECT id FROM tasks WHERE workflowId=? AND status NOT IN ('completed','error','cancelled')",
+        )
+        .all(id)) {
+        this.markCancelled(String(row.id), 'Cancelada com a ordem Nexus');
+      }
+      this.db.prepare("UPDATE workflows SET status='cancelled' WHERE id=?").run(id);
+      this.event('workflow_cancelled', 'Ordem interrompida pelo CEO');
+    });
+    this.changed();
+  }
+  private resolveDependencies(): void {
+    let updated = false;
+    this.transaction(() => {
+      const failed = this.db
+        .prepare(
+          `UPDATE workflows SET status='error' WHERE status IN ('planning','proposed','running') AND EXISTS (
+        SELECT 1 FROM tasks t WHERE t.workflowId=workflows.id AND t.status IN ('error','cancelled'))`,
+        )
+        .run();
+      if (Number(failed.changes) > 0) updated = true;
+      // At most 30 steps, bounded propagation without loops in the graph.
+      for (let pass = 0; pass < 30; pass++) {
+        const rows = this.db
+          .prepare(
+            `SELECT t.id,t.employeeId,t.workflowId FROM tasks t WHERE t.status IN ('queued','blocked') AND EXISTS (
+          SELECT 1 FROM json_each(t.dependencyIds) d JOIN tasks p ON p.id=d.value WHERE p.status IN ('error','cancelled'))`,
+          )
+          .all();
+        if (!rows.length) break;
+        for (const row of rows) {
+          this.db
+            .prepare(
+              "UPDATE tasks SET status='error', error='Etapa anterior falhou ou foi cancelada; nenhuma inferência executada', finishedAt=? WHERE id=?",
+            )
+            .run(now(), String(row.id));
+          this.event(
+            'dependency_failed',
+            'Dependência não concluída',
+            row.employeeId as EmployeeId,
+            String(row.id),
+          );
+          if (row.workflowId)
+            this.db
+              .prepare(
+                "UPDATE workflows SET status='error' WHERE id=? AND status NOT IN ('cancelled','completed')",
+              )
+              .run(String(row.workflowId));
+          updated = true;
+        }
+      }
+      const transition = this.inference.connected
+        ? this.db
+            .prepare(
+              "UPDATE tasks SET status='queued' WHERE status='blocked' AND kind='ai_request'",
+            )
+            .run()
+        : this.db
+            .prepare(
+              "UPDATE tasks SET status='blocked' WHERE status='queued' AND kind='ai_request'",
+            )
+            .run();
+      if (Number(transition.changes) > 0) updated = true;
+    });
+    if (updated) this.changed();
+  }
+  private inferenceTask(task: SalesTask): SalesTask {
+    const config = this.memory.config();
+    const related: Record<string, unknown>[] = [];
+    const ids =
+      task.stage === 'summary' && task.workflowId
+        ? this.db
+            .prepare(
+              "SELECT id FROM tasks WHERE workflowId=? AND status='completed' ORDER BY rowid",
+            )
+            .all(task.workflowId)
+            .map((row) => String(row.id))
+        : (task.dependencyIds ?? []);
+    for (const id of ids) {
+      const upstream = this.getTask(id);
+      related.push({
+        taskId: id,
+        employeeId: upstream.employeeId,
+        summary: String(upstream.result?.summary ?? '').slice(0, 800),
+      });
+    }
+    const input: Record<string, unknown> = {
+      ...task.input,
+      upstreamResults: related,
+      metrics: {
+        completedTasks: Number(
+          this.db.prepare("SELECT count(*) as n FROM tasks WHERE status='completed'").get()?.n,
+        ),
+        registrations: null,
+        payingCustomers: null,
+        revenue: null,
+      },
+    };
+    const memories = this.memory
+      .recent(task.employeeId)
+      .slice(0, 4)
+      .map((m) => ({ kind: m.kind, content: m.content.slice(0, 500) }));
+    if (
+      JSON.stringify(input).length + JSON.stringify(memories).length <
+      config.maxContextChars - 3000
+    )
+      input.operationalMemory = memories;
+    return { ...task, input };
+  }
+
   startWorker(): void {
+    if (!this.healthTimer && this.inference instanceof OllamaInferenceAdapter) {
+      void this.refreshIntelligence();
+      this.healthTimer = setInterval(() => {
+        void this.refreshIntelligence();
+      }, 10000);
+      this.healthTimer.unref();
+    }
     if (!this.timer) {
       this.timer = setInterval(() => {
         void this.tick();
@@ -381,12 +721,19 @@ export class SalesEngine extends EventEmitter {
     if (this.closed || this.busy || this.suspended) return;
     this.busy = true;
     try {
-      while (!this.closed && !this.suspended && this.active.size < 2) {
+      this.resolveDependencies();
+      while (
+        !this.closed &&
+        !this.suspended &&
+        this.active.size <
+          (this.inference instanceof OllamaInferenceAdapter ? this.memory.config().concurrency : 2)
+      ) {
         const claimed = this.transaction(() => {
           const row = this.db
             .prepare(
               `SELECT t.* FROM tasks t JOIN employees e ON e.id=t.employeeId
             WHERE t.status='queued' AND e.enabled=1
+              AND NOT EXISTS (SELECT 1 FROM json_each(t.dependencyIds) d LEFT JOIN tasks p ON p.id=d.value WHERE p.id IS NULL OR p.status!='completed')
               AND NOT EXISTS (SELECT 1 FROM tasks r WHERE r.employeeId=t.employeeId AND r.status='running')
             ORDER BY t.priority DESC, t.createdAt, t.rowid LIMIT 1`,
             )
@@ -396,6 +743,10 @@ export class SalesEngine extends EventEmitter {
           this.db
             .prepare("UPDATE tasks SET status='running', startedAt=?, error=NULL WHERE id=?")
             .run(now(), task.id);
+          if (task.kind === 'ai_request' && this.inference instanceof OllamaInferenceAdapter)
+            this.db
+              .prepare('UPDATE tasks SET model=? WHERE id=?')
+              .run(this.inference.config.model, task.id);
           this.event('task_started', task.objective, task.employeeId, task.id);
           return this.getTask(task.id);
         });
@@ -410,18 +761,29 @@ export class SalesEngine extends EventEmitter {
     }
   }
   private async execute(task: SalesTask, signal: AbortSignal): Promise<void> {
+    const started = performance.now();
     try {
       const result =
         task.kind === 'ai_request'
-          ? await this.inference.run(task, { signal, objective: SALES_OBJECTIVE })
+          ? await this.inference.run(this.inferenceTask(task), {
+              signal,
+              objective: SALES_OBJECTIVE,
+            })
           : this.structuredOperation(task);
-      if (!signal.aborted && !this.closed) this.finish(task, result, null);
+      if (!signal.aborted && !this.closed)
+        this.finish(
+          task,
+          result,
+          null,
+          task.kind === 'ai_request' ? Math.round(performance.now() - started) : undefined,
+        );
     } catch (error) {
       if (!signal.aborted && !this.closed)
         this.finish(
           task,
           null,
           error instanceof Error ? error.message.slice(0, 2000) : 'Erro de execução',
+          task.kind === 'ai_request' ? Math.round(performance.now() - started) : undefined,
         );
     } finally {
       this.active.delete(task.id);
@@ -431,18 +793,35 @@ export class SalesEngine extends EventEmitter {
     task: SalesTask,
     result: Record<string, unknown> | null,
     error: string | null,
+    durationMs?: number,
   ): void {
     this.transaction(() => {
       if (this.getTask(task.id).status !== 'running') return;
       this.db
-        .prepare('UPDATE tasks SET status=?, result=?, error=?, finishedAt=? WHERE id=?')
+        .prepare(
+          'UPDATE tasks SET status=?, result=?, error=?, finishedAt=?, model=COALESCE(?,model), durationMs=? WHERE id=?',
+        )
         .run(
           error ? 'error' : 'completed',
           result ? JSON.stringify(result) : null,
           error,
           now(),
+          typeof result?.model === 'string' ? result.model : null,
+          typeof result?.durationMs === 'number' ? result.durationMs : (durationMs ?? null),
           task.id,
         );
+      if (!error && typeof result?.summary === 'string')
+        this.memory.add('summary', result.summary.slice(0, 2000), task.employeeId, task.id);
+      if (task.workflowId) {
+        if (error)
+          this.db.prepare("UPDATE workflows SET status='error' WHERE id=?").run(task.workflowId);
+        else if (task.stage === 'plan')
+          this.db.prepare("UPDATE workflows SET status='proposed' WHERE id=?").run(task.workflowId);
+        else if (task.stage === 'summary')
+          this.db
+            .prepare("UPDATE workflows SET status='completed' WHERE id=?")
+            .run(task.workflowId);
+      }
       this.event(
         error ? 'task_error' : 'task_completed',
         error ?? 'Resultado estruturado disponível',
@@ -526,6 +905,7 @@ export class SalesEngine extends EventEmitter {
   close(): void {
     if (this.closed) return;
     if (this.timer) clearInterval(this.timer);
+    if (this.healthTimer) clearInterval(this.healthTimer);
     this.transaction(() => {
       for (const e of EMPLOYEES) this.interrupt(e.id);
     });

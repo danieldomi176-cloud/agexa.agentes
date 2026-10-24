@@ -3,14 +3,17 @@
 **Organização que trabalha por ti.**
 
 Extensão do Pixel Agents para o futuro escritório comercial do Agexa.
-A Fase 2 mantém o Canvas 2D, editor, personagens, assets, Fastify e WebSockets
-originais, acrescentando oito funcionários com lugares fixos, painel privado do CEO,
-fila SQLite, aprovações, pausa/suspensão e eventos em tempo real.
-**Os funcionários estão configurados; a inferência real com Ollama depende da Fase 3.**
-Briefings estruturados, qualificação por regras e relatórios de tarefas funcionam
-sem IA. Pedidos de IA ficam bloqueados de forma explícita. Não existe integração
-WhatsApp, pesquisa autónoma ou confirmação automática de conversões nesta fase.
-O modo Vite continua reservado a prototipagem com dados simulados identificados.
+A Fase 3 acrescenta um adaptador Ollama, instruções específicas para oito funcionários,
+memória operacional e planos Nexus sujeitos à aprovação do CEO. O escritório Pixel
+Agents, o editor e a fila SQLite das fases anteriores continuam preservados.
+
+**A inferência só fica disponível quando um serviço Ollama e um modelo instalado
+forem verificados. Nenhum modelo é descarregado automaticamente.** No ambiente desta
+implementação, Ollama não estava disponível: a integração multiagente foi validada
+contra uma API simulada, identificada como teste. Isto não comprova inferência real.
+
+A aplicação produz rascunhos internos; não envia mensagens nem faz scraping.
+Briefings, qualificação por regras e relatórios sem IA da Fase 2 continuam disponíveis.
 
 Ver [instalação e plano técnico](docs/AGEXA.md) e
 [requisitos fornecidos pelo CEO](docs/AGEXA_REQUIREMENTS.md).

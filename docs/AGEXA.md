@@ -333,3 +333,223 @@ validação de restauração numa máquina nova. Não foram solicitadas novas cr
 - `webview-ui/src/office/engine/officeState.ts`
 - `webview-ui/src/office/types.ts`
 - `webview-ui/test/salesBridge.test.ts`
+
+
+## Fase 3 — Ollama, memória operacional e colaboração
+
+### Preservação e estado desta entrega
+
+A branch `agexa/phase-3` foi criada a partir de
+`21ba48662c20f1b8188102a8033e275a3c4c1e3d`, confirmado também no remoto
+`agexa/phase-2`. As branches e commits anteriores continuam preservados.
+Não foram adicionadas dependências de APIs pagas, nem alterados a licença ou o lockfile.
+A migração SQLite v1 → v2 é aditiva: acrescenta colunas e tabelas para inferência,
+memória e ordens Nexus, mantendo as tarefas e definições existentes.
+
+**Neste ambiente não foi encontrado binário Ollama, serviço local na porta 11434
+ou modelo instalado acessível. Nenhum modelo foi descarregado.** A ligação real
+continua dependente de um serviço/modelo preparado pelo operador. Os oito funcionários
+foram exercitados contra um servidor simulado do contrato Ollama nos testes; nenhum
+foi declarado como tendo usado um LLM real nesta validação.
+
+Os testes usam diretórios temporários. Antes do arranque atualizado no diretório
+real, foi criado backup SQLite consistente e privado em `/workspace/.agexa-backups/`,
+fora do Git, com o escritório sem tarefas em execução. Os registos pré-existentes
+são comparados por hash, sem imprimir os seus conteúdos.
+
+### Módulos
+
+- `core/src/intelligence.ts`: configuração, conhecimento, resultados operacionais,
+  memória e contratos de workflow.
+- `server/src/agexa/ollama.ts`: adaptador HTTP Ollama `/api/tags` e `/api/chat`,
+  deteção do binário, disponibilidade observada, modelo, limites, timeout e cancelamento.
+- `server/src/agexa/prompts.ts`: instruções individuais e validação dos resultados.
+- `server/src/agexa/memory.ts`: migração aditiva, factos confirmados, decisões,
+  resumos operacionais e recuperação de contexto relevante.
+- `server/src/agexa/engine.ts`: fila anterior estendida com dependências, orçamentos,
+  aprovação de planos, registos de modelo/duração e cancelamento da ordem inteira.
+- `server/src/agexa/intelligenceRoutes.ts`: rotas administrativas no mesmo âmbito
+  protegido por token, Host e Origin da Fase 2.
+- `webview-ui/src/components/IntelligencePanel.tsx`: Central IA, Comando Nexus e
+  conhecimento confirmado pelo CEO, integrados no painel existente.
+
+### Preparar Ollama e escolher o modelo
+
+1. Na máquina que executa o backend, disponibilizar Ollama e um modelo local já
+   instalado. Se o binário estiver instalado, `ollama serve` inicia o serviço e
+   `ollama list` mostra os modelos. Esta aplicação não instala o serviço nem executa
+   `ollama pull`. Qualquer download exige autorização separada do operador.
+2. Arrancar o escritório com os mesmos comandos das fases anteriores:
+
+```bash
+export PATH=/workspace/.tooling/node22/node_modules/node/bin:$PATH
+export AGEXA_DATA_DIR=/workspace/.agexa-data
+cd /workspace/agexa.agentes
+umask 077
+npm run start:agexa
+```
+
+3. Entrar com o acesso administrativo privado. Em **Central IA**, indicar o endereço
+   do serviço (por omissão `http://127.0.0.1:11434`) e guardar. O backend consulta os
+   modelos instalados; escolher um na lista e guardar novamente.
+4. Confirmar serviço acessível, modelo presente e inferência disponível. Um campo
+   preenchido não estabelece prontidão. A verificação é renovada periodicamente;
+   a geração também verifica o serviço e o modelo antes da chamada.
+
+O endereço é relativo à máquina do backend, não ao navegador/telemóvel do CEO.
+Por segurança, a configuração aceita apenas loopback (`localhost`, `127.0.0.1`,
+`::1`), sem credenciais, caminhos adicionais, query ou redirecionamentos HTTP.
+Serviços noutra máquina precisam primeiro de um encaminhamento local autorizado;
+não é feito scan de rede nem acesso arbitrário a hosts remotos.
+
+Uma configuração corresponde a um modelo partilhado pelos oito funcionários,
+com instruções diferentes. O estado deteta binário e serviço separadamente:
+pode existir um serviço local acessível mesmo sem binário no PATH do backend.
+A presença em `/api/tags` prova disponibilidade observada do serviço/modelo;
+a execução ainda pode falhar por recursos, contrato ou saída inválida, e a tarefa
+regista o erro em vez de produzir uma resposta falsa.
+
+### Exemplo de colaboração
+
+Em **Conhecimento**, confirmar apenas funcionalidades, preços, políticas e oferta
+que existam no Agexa real. Não há URL de cadastro inventado. A duração é sete dias;
+a oferta só pode ser ativada com URL HTTPS confirmado. Sem confirmação, o rascunho
+não pode anunciar teste gratuito nem incluir um URL não aprovado.
+
+Em **Nexus**, escrever:
+
+> Quero vender o Agexa a barbearias da Beira. Prepara uma estratégia comercial.
+
+Fornecer os dados empresariais autorizados no campo JSON e confirmar a autorização.
+O botão **Pedir plano ao Nexus** habilita a fila do Nexus e cria uma inferência
+para propor o plano. Se Ollama estiver indisponível, o pedido fica bloqueado.
+Não existe um plano falso de substituição.
+
+Após uma resposta válida, o plano fica `proposed`. **Aprovar plano e iniciar equipa**
+é a autorização para habilitar os funcionários e criar a cadeia persistente:
+
+```text
+Nexus (plano) → Hunter → Atlas → Maya → Luna → Victor → Sophia → Orion → Nexus (síntese)
+```
+
+São nove chamadas separadas ao modelo, nove tarefas com identificadores e eventos
+próprios, envolvendo oito funcionários. Hunter analisa apenas dados fornecidos;
+Atlas qualifica, Maya prepara abordagens, Luna apresenta o produto, Victor trata
+objeções, Sophia prepara o cadastro condicionado aos factos e Orion analisa os
+resultados. A última inferência Nexus sintetiza o trabalho para o CEO.
+
+Cada etapa tem dependência explícita da anterior. Resultados relevantes são
+recuperados pelo identificador da tarefa; a síntese recebe os resumos operacionais
+anteriores. O modelo não decide livremente criar ferramentas, recursão ou agentes
+adicionais: o plano tem destinatários e ordem permitidos, validados antes da execução.
+Repetir a aprovação de um plano não duplica tarefas. Uma falha interrompe os
+sucessores dependentes e deixa evidência de que não fizeram inferência.
+
+### Memória, segurança e limites
+
+- Factos comerciais, decisões do CEO, tarefas, erros e resumos operacionais são
+  persistentes. Não se guardam pensamentos internos nem o campo `thinking` do Ollama.
+- A memória recuperada por tarefa inclui decisões aplicáveis e resumos relacionados
+  com a sua ordem, sem carregar indiscriminadamente dados de outros clientes.
+- Instruções por funcionário permanecem em código. Dados externos, políticas
+  comerciais em texto e resultados anteriores não têm autoridade para alterar
+  as regras administrativas nem disponibilizam ferramentas de execução.
+- Resultados exigem JSON operacional validado. Campos extra, planos recursivos,
+  anúncios de oferta não confirmada, URLs de rascunho não aprovados e preços
+  monetários não aprovados são rejeitados. Os rascunhos continuam sujeitos à
+  revisão humana: validação estrutural não garante que toda a linguagem do modelo
+  esteja correta.
+- Não há endpoints de download de modelos, shell, scraping, WhatsApp ou envio
+  comercial. Todas as mensagens são rascunhos internos.
+- Por omissão, uma inferência de cada vez, timeout de 60 segundos, contexto de
+  12 000 caracteres e orçamento por ordem de 12 tarefas/10 inferências. Uma ordem
+  completa usa nove tarefas/inferências. Limites configuráveis: concorrência 1–2,
+  contexto 2 000–24 000 caracteres, timeout até 180 segundos e orçamentos 9–30.
+- O contexto excessivo causa erro explícito; não é truncado silenciosamente como
+  se todos os factos tivessem sido considerados. O backend usa HTTP assíncrono.
+- Fila global limitada a 100 tarefas pendentes e cinco ordens Nexus pendentes.
+  Não há retries automáticos de inferências com resultado incerto.
+- Cancelar uma tarefa, pausar um funcionário ou suspender operações aciona o
+  AbortSignal e descarta resultados tardios. **Cancelar ordem** cancela também as
+  etapas pendentes. Os estados são conservados após reinício; uma inferência
+  interrompida não é repetida cegamente.
+- Cada tarefa IA guarda modelo tentado/utilizado, duração, timestamps, resultado
+  operacional ou erro. O painel mostra tarefas recebidas/delegadas e dependências.
+
+As animações continuam a ser derivadas dos estados reais do backend. Durante uma
+chamada HTTP em execução, trabalha apenas o funcionário correspondente. Os testes
+Chromium observaram os oito personagens durante as suas chamadas simuladas, sem
+usar temporizadores para fabricar atividade no escritório.
+
+### Testes e distinção entre simulação e inferência real
+
+```bash
+npm run build
+npm run lint
+env -u AGEXA_DATA_DIR npm test
+npm run asyncapi:validate
+npm run test:smoke
+AGEXA_CHROMIUM_PATH=/usr/bin/chromium npm run test:agexa:e2e
+AGEXA_CHROMIUM_PATH=/usr/bin/chromium npm run test:agexa:intelligence:e2e
+```
+
+O último comando usa um emulador HTTP em
+`server/__tests__/helpers/mockOllama.ts`, isolado dos dados do CEO. O processo de teste
+é iniciado com `AGEXA_INFERENCE_TEST_MODE=1`; o painel e cada resultado identificam
+`executionMode: test`. Esse sinalizador não deve ser usado no escritório real.
+Não existe fallback automático para inferência simulada em produção.
+
+As suites novas verificam ligação, indisponibilidade, modelo ausente, validação,
+respostas inválidas, limite de resposta, timeout, AbortSignal, cancelamento, memória,
+aprovação Nexus, dependências Atlas → Maya → Luna → Victor → Sophia → Orion,
+limites de concorrência, reinício, falha de agente, autenticação e migração dos dados
+da Fase 2. Os testes Chromium também verificam a seleção de modelo, os nove pedidos,
+os oito personagens, persistência/reconexão e desktop/mobile.
+
+### Resultado da validação desta entrega
+
+- Build, tipos e lint aprovados; AsyncAPI válido.
+- Suite completa: 196 testes da interface + 773 do servidor + 7 de contrato =
+  **976 testes aprovados**, sem skips. Após a última alteração de duração de
+  cancelamentos, os 45 testes dos módulos afetados também foram reexecutados e passaram.
+- Chromium de regressão da Fase 2 aprovado.
+- Chromium da Fase 3 aprovado com API Ollama simulada: seleção de modelo, aprovação
+  humana, nove chamadas separadas, oito personagens observados durante a sua própria
+  execução HTTP, memória, reinício, reconexão e desktop/mobile.
+- Smoke do backend real da Fase 3 aprovado na porta local 3100. Migração SQLite v2
+  aplicada com backup privado; os valores de todas as colunas e registos anteriores
+  de tarefas, funcionários, definições e eventos foram comparados por hash e ficaram
+  inalterados.
+- Inferências com modelo local real nesta validação: **zero**. Os oito funcionários
+  foram testados com simulação identificada; o escritório real não recebeu tarefas
+  nem resultados de demonstração.
+
+Mantêm-se o aviso antigo de dependência useEffect, o aviso de tamanho do bundle e
+o aviso experimental do SQLite do Node 22. A suite completa E2E VS Code/Claude não
+foi executada. Publicação do ambiente e restauração numa nova máquina continuam a
+ser passos distintos da validação deste processo.
+
+### Ficheiros da Fase 3
+
+- `README.md`
+- `core/src/agexa.ts`
+- `core/src/intelligence.ts`
+- `docs/AGEXA.md`
+- `package.json`
+- `scripts/agexa-intelligence-e2e.mjs`
+- `scripts/agexa-smoke.mjs`
+- `server/__tests__/helpers/mockOllama.ts`
+- `server/__tests__/intelligenceRoutes.test.ts`
+- `server/__tests__/nexusWorkflow.test.ts`
+- `server/__tests__/ollamaInference.test.ts`
+- `server/src/agexa/engine.ts`
+- `server/src/agexa/intelligenceRoutes.ts`
+- `server/src/agexa/memory.ts`
+- `server/src/agexa/ollama.ts`
+- `server/src/agexa/prompts.ts`
+- `server/src/agexa/routes.ts`
+- `server/src/cli.ts`
+- `webview-ui/src/components/AgexaOffice.tsx`
+- `webview-ui/src/components/IntelligencePanel.tsx`
+- `webview-ui/src/index.css`
+- `webview-ui/src/testHooks.ts`

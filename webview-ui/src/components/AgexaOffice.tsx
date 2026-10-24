@@ -6,13 +6,14 @@ import App from '../App.js';
 import type { SalesOffice } from '../hooks/useSalesOffice.js';
 import { useSalesOffice } from '../hooks/useSalesOffice.js';
 import { AgexaHeader } from './AgexaHeader.js';
+import { IntelligencePanel } from './IntelligencePanel.js';
 
 const statuses: Record<string, string> = {
   paused: 'Pausado',
   available: 'Disponível',
   working: 'A trabalhar',
   awaiting_approval: 'Aguarda aprovação',
-  blocked: 'Bloqueado · sem IA',
+  blocked: 'Bloqueado · IA indisponível',
   error: 'Erro',
   queued: 'Na fila',
   running: 'Em execução',
@@ -114,7 +115,13 @@ export function AgexaOffice() {
               setOpen(true);
             }}
           />
-          <div className="agexa-inference-note">Configurados · sem inferência real · Fase 2</div>
+          <div className="agexa-inference-note">
+            {office.snapshot?.intelligence?.status.executionMode === 'test'
+              ? 'TESTE · API Ollama simulada'
+              : office.snapshot?.inference.connected
+                ? 'Inferência Ollama disponível · rascunhos internos'
+                : 'Inferência indisponível · nenhum modelo ativo'}
+          </div>
         </main>
         {open && office.snapshot && (
           <SalesPanel
@@ -142,7 +149,9 @@ function SalesPanel({
 }) {
   const snapshot = office.snapshot!;
   const employee = snapshot.employees.find((e) => e.id === selected)!;
-  const [tab, setTab] = useState<'team' | 'tasks' | 'events'>('team');
+  const [tab, setTab] = useState<
+    'team' | 'tasks' | 'events' | 'intelligence' | 'nexus' | 'knowledge'
+  >('team');
   const [kind, setKind] = useState<TaskKind>('prepare_brief');
   const [objective, setObjective] = useState('');
   const [context, setContext] = useState('{}');
@@ -188,6 +197,9 @@ function SalesPanel({
             ['team', 'Funcionários'],
             ['tasks', 'Tarefas'],
             ['events', 'Eventos'],
+            ['intelligence', 'Central IA'],
+            ['nexus', 'Nexus'],
+            ['knowledge', 'Conhecimento'],
           ] as const
         ).map(([value, label]) => (
           <button key={value} aria-pressed={tab === value} onClick={() => setTab(value)}>
@@ -275,7 +287,7 @@ function SalesPanel({
                 {selected === 'orion' && (
                   <option value="sales_report">Relatório de tarefas reais</option>
                 )}
-                <option value="ai_request">Pedido de IA · bloqueado até Fase 3</option>
+                <option value="ai_request">Inferência IA · rascunho interno</option>
               </select>
             </label>
             <label>
@@ -376,6 +388,12 @@ function SalesPanel({
               <small>
                 {task.kind} · prioridade {task.priority}
               </small>
+              {task.kind === 'ai_request' && (
+                <p>
+                  {task.model ?? 'Modelo ainda não executado'} · {task.durationMs ?? '—'} ms ·{' '}
+                  {task.stage ?? 'tarefa individual'}
+                </p>
+              )}
               {task.error && <p className="agexa-error">{task.error}</p>}
               {task.status === 'blocked' && (
                 <p>Sem fornecedor de inferência. Nenhuma resposta de IA foi produzida.</p>
@@ -444,6 +462,9 @@ function SalesPanel({
               </article>
             ))}
         </section>
+      )}
+      {(tab === 'intelligence' || tab === 'nexus' || tab === 'knowledge') && (
+        <IntelligencePanel office={office} tab={tab} act={act} ready={ready} />
       )}
     </aside>
   );

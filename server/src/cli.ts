@@ -11,9 +11,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { DEFAULT_INTELLIGENCE } from '../../core/src/intelligence.js';
 import { AgentRuntime } from './agentRuntime.js';
 import { AgentStateStore } from './agentStateStore.js';
 import { SalesEngine } from './agexa/engine.js';
+import { OllamaInferenceAdapter } from './agexa/ollama.js';
 import {
   buildAssetCache,
   loadAllCharacters,
@@ -238,7 +240,15 @@ async function main(): Promise<void> {
       ) as Record<string, unknown>)
     : null;
   if (salesLayout) assetCache.defaultLayout = salesLayout;
-  const salesEngine = args.agexa ? new SalesEngine(getDataDirectory()) : undefined;
+  const salesEngine = args.agexa
+    ? new SalesEngine(
+        getDataDirectory(),
+        new OllamaInferenceAdapter(
+          DEFAULT_INTELLIGENCE,
+          process.env.AGEXA_INFERENCE_TEST_MODE === '1' ? 'test' : 'ollama',
+        ),
+      )
+    : undefined;
 
   // ── Store + adapter (shared settings + standalone-scoped agents/seats) ──
   const store = new AgentStateStore();

@@ -637,3 +637,10 @@
 .agexa-login * {
   font-family: inherit;
 }
+
+.agexa-tabs {
+  flex-wrap: wrap;
+}
+.agexa-panel li {
+  margin: 6px 0;
+}

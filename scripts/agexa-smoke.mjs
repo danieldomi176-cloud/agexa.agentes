@@ -13,7 +13,9 @@ const manifest = await (await fetch(`${base}/manifest.webmanifest`)).json();
 assert.equal(manifest.name, 'AGEXA AI OFFICE');
 const commercial = await fetch(`${base}/api/agexa/enabled`);
 assert.equal(commercial.status, 200);
-assert.equal((await commercial.json()).enabled, true);
+const capability = await commercial.json();
+assert.equal(capability.enabled, true);
+assert.equal(capability.phase, 3);
 assert.equal((await fetch(`${base}/api/agexa/state`)).status, 401);
 await new Promise((resolve, reject) => {
   const ws = new WebSocket(`${base.replace('http:', 'ws:')}/ws`);

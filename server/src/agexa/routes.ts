@@ -12,6 +12,7 @@ import {
   standaloneHandshakeVerdict,
 } from '../wsAuth.js';
 import { SalesEngine, SalesError } from './engine.js';
+import { registerIntelligenceRoutes } from './intelligenceRoutes.js';
 
 export async function registerSalesRoutes(
   app: FastifyInstance,
@@ -25,7 +26,7 @@ export async function registerSalesRoutes(
 ): Promise<void> {
   const { engine, token, allowedHosts } = options;
   app.get('/api/agexa/enabled', async (_request, reply) =>
-    reply.header('Cache-Control', 'no-store').send({ enabled: true }),
+    reply.header('Cache-Control', 'no-store').send({ enabled: true, phase: 3 }),
   );
   await app.register(
     async (api) => {
@@ -58,6 +59,7 @@ export async function registerSalesRoutes(
         });
       });
       api.get('/state', async () => engine.snapshot());
+      registerIntelligenceRoutes(api, engine);
       api.get('/events', { websocket: true }, (socket) => {
         const send = (): void => {
           if (socket.readyState === 1) socket.send(JSON.stringify(engine.snapshot()));
