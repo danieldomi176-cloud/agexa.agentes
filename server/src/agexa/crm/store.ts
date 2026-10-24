@@ -43,7 +43,7 @@ export class CrmStore {
    CREATE TABLE IF NOT EXISTS crm_source_usage(id TEXT PRIMARY KEY,sourceId TEXT NOT NULL REFERENCES crm_sources(id),operation TEXT NOT NULL,createdAt TEXT NOT NULL);
    CREATE INDEX IF NOT EXISTS crm_company_filters ON crm_companies(stage,city,sector);
    CREATE INDEX IF NOT EXISTS crm_activity_company ON crm_activities(companyId,id);
-   PRAGMA user_version=3;`),
+   ${Number(db.prepare('PRAGMA user_version').get()?.user_version ?? 0) < 3 ? 'PRAGMA user_version=3;' : ''}`),
     );
   }
   atomic<T>(work: () => T): T {
@@ -721,6 +721,21 @@ export class CrmStore {
         `${company.stage} → ${stage}${external ? '; confirmação manual com evidência: ' + verification!.evidence : ''}`,
         id,
       );
+    });
+  }
+  recordMessagingHandoff(id: string, evidence: string): void {
+    const company = this.company(id);
+    if (company.recordMode === 'simulated')
+      throw new CrmError('Sem conversões reais para simulações');
+    this.atomic(() => {
+      for (const stage of ['conversation', 'interested', 'link_sent', 'ceo'])
+        this.db
+          .prepare('INSERT INTO crm_verifications VALUES (?,?,?,?,?,?)')
+          .run(randomUUID(), id, stage, evidence, now(), now());
+      this.db
+        .prepare("UPDATE crm_companies SET stage='ceo',lastInteraction=?,updatedAt=? WHERE id=?")
+        .run(now(), now(), id);
+      this.activity('messaging_handoff_confirmed', evidence, id, null, 'sophia');
     });
   }
   handoff(id: string, knowledge: AgexaKnowledge): Record<string, unknown> {

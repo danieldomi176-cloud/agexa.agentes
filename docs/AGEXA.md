@@ -785,3 +785,124 @@ O `install_script` continua válido e inalterado. O `start_skill` do ambiente é
 atualizado para esta fase, com arranque, migração, limitações e checks. Guardar um
 rascunho e fazer push não publica o ambiente: rever/guardar nas definições e depois
 publicar pelo produto. Não foi anunciada publicação nem restauração futura validada.
+
+## Fase 5 — WhatsApp Sales Center e atendimento aprovado
+
+Continuação do commit `1b2d872869e8ca027d352ffaa1eba0ca97a576c7`, em
+`agexa/phase-5`. Foram preservados o escritório, editor, oito funcionários,
+autenticação, CRM, tarefas, IDs e branches anteriores. Não houve force-push.
+
+Conector experimental implementado, mas ligação real não validada.
+
+O painel privado tem agora **WhatsApp Center**: estado/capacidades da conexão,
+configuração, QR privado quando aplicável, inbox pesquisável/paginada, associação
+explícita ao CRM, histórico, notas, responsável, versões de respostas, aprovação e
+envio individual, reconciliação, transferência humana e eventos em tempo real.
+
+O atendimento padrão é assistido; também existe modo manual. Em ambos, envio pelo
+conector experimental exige aprovação humana da versão exata e confirmação
+individual. A edição cria nova versão. Mensagem recebida depois da preparação
+invalida a versão anterior para aprovação/envio. O modo automático está bloqueado.
+A inbox não permite disparos ou contacto a números encontrados pelo Hunter.
+
+Ver [manual completo, QR, modos e limites](AGEXA_MESSAGING.md).
+
+### Providers e execução real
+
+`MessagingProvider` desacopla os agentes/CRM da biblioteca de WhatsApp:
+
+- Mock completo, exclusivo de testes isolados, com conteúdo/métricas simulados.
+- `WhatsAppWebExperimentalProvider`, baseado em `whatsapp-web.js` 1.34.7,
+  LocalAuth e eventos de texto/QR/estado/aceitação. Desligado por omissão;
+  confirmação administrativa e número de testes exigidos.
+- `WhatsAppCloudApiProvider`: contrato/stub, sem transporte, credenciais ou webhook.
+
+A biblioteca experimental é opcional; `qrcode` produz a imagem no backend.
+O lockfile foi atualizado de forma intencional e a instalação reproduzida com:
+
+```bash
+PUPPETEER_SKIP_DOWNLOAD=true HUSKY=0 npm ci --cache /workspace/.npm-cache
+npm run build
+```
+
+Não houve download de navegador/modelo nem API paga. Para ligar QR, configurar
+`AGEXA_WHATSAPP_CHROMIUM_PATH` para um Chromium existente, reiniciar o servidor,
+configurar e confirmar o canal experimental, ligar e associar pelo telefone em
+**Dispositivos associados → Associar dispositivo**. Não usar o número principal.
+Conservar sandbox/TLS e as regras de rede; não contornar restrições desta nuvem.
+Sessão em `AGEXA_DATA_DIR/messaging-auth`, fora de Git, protegida a 0700.
+QR efémero não é persistido, transmitido em WebSocket ou publicado em logs.
+
+O cliente é não oficial e pode sofrer restrições ou bloqueio. Sem histórico remoto,
+grupos, anexos ou resolução automática de identificadores `@lid`; a prova de
+conceito trata mensagens de texto individuais `@c.us`. A deteção humana é parcial,
+logo não permite ativar automático. O encerramento normal aguarda o browser; a
+reconexão é explícita e conserva LocalAuth. Revogação tenta logout e remove a sessão
+local; confirmar também no telefone. Uma conta diferente da inbox é bloqueada.
+
+### Integração com os funcionários e CRM
+
+Os oito funcionários executam tarefas reais na fila existente, com dependências e
+eventos que conduzem as animações. Sem Ollama, operam com regras/rascunhos manuais
+identificados. IA é opcional por tarefa e não tem fallback simulado em produção.
+Só o CEO pode aprovar ou enviar; a IA não altera consentimento/políticas.
+
+Sophia reutiliza a configuração comercial existente. Exige URL/oferta/sete dias
+confirmados, interesse e aceitação do link declarados pelo CEO com evidência numa
+mensagem recebida. Um número publicado ou uma nota alta nunca concede consentimento.
+No envio, são revalidados canal, contacto, consentimento, versão, conhecimento,
+responsabilidade e suspensão. Simulações e resultados de modelo de teste não podem
+ser enviados como conteúdo real a uma conversa real.
+
+Uma transação cria a entrega antes da chamada ao provider. Há idempotência por
+provider/ID e por rascunho, com lock persistente por conversa. ID sem confirmação
+fica pendente. A confirmação usada é aceitação do servidor/provider, não leitura.
+Erro/timeout/reinício sem certeza exigem reconciliação manual e nunca retry cego.
+
+Após convite confirmado, a conversa passa ao CEO, agentes ficam bloqueados,
+participação pendente é cancelada e é emitida notificação. Em dados reais, há
+atualização auditada do CRM e resumo; dados simulados não ganham etapas reais.
+Isto não confirma conta criada, teste ativo ou pagamento. A intervenção humana
+observada e o botão de transferência também bloqueiam agentes. Pedidos reconhecidos
+de não contacto revogam o consentimento do canal. Formulações não reconhecidas
+continuam a exigir revisão humana.
+
+**PARAR TODA A AUTOMAÇÃO** suspende motor/canal e cancela tarefas de conversa
+elegíveis, sem destruir dados. Não retira um envio já entregue ao provider;
+o resultado deve ser confirmado ou reconciliado.
+
+### Persistência e validação
+
+Migração aditiva SQLite v3 → v4 acrescenta nove tabelas de conexão, conversa,
+mensagem, versão, aprovação, entrega, atribuição, eventos e auditoria. Estado
+persistente do provider integra a conexão; QR e ligação ativa não são presumidos
+após reinício. Company e consentimentos permanecem no CRM por ID.
+
+Foi criado backup consistente privado antes das alterações, com hashes de todas
+as tabelas existentes, incluindo CRM. A base operacional não recebeu fixtures,
+contas ou mensagens de teste. A comparação após migração confirmou hashes/IDs iguais em todas as tabelas
+anteriores, e o smoke HTTP/WebSocket passou após o arranque com schema v4. Nenhuma sessão, token ou conversa real vai para Git.
+
+Checks da fase: build/tipos/lint, npm test, AsyncAPI, smoke e quatro cenários
+Chromium (Fases 2–5). A suite tem **1.057 testes**: 196 interface + 854 servidor +
+7 contratos; preserva os 1.018 anteriores e acrescenta 39. O teste antigo de migração
+continua a comparar os dados anteriores; a versão esperada foi atualizada para v4.
+Mantêm-se os avisos anteriores de useEffect, bundle e SQLite experimental.
+
+O novo cenário `npm run test:agexa:messaging:e2e` usa backend real, SQLite e
+mensagens fictícias com provider simulado: associação CRM, Luna por regras,
+aprovação da versão, envio simulado, rejeição, Sophia, CEO, suspensão, reinício e
+renderização desktop/mobile. Não executa inferência. Os testes QR usam cliente de
+navegador injetado; os testes IA usam emulador Ollama. Não comprovam autenticação
+WhatsApp, entrega externa ou inferência com modelo real.
+
+Ollama continua inacessível em `127.0.0.1:11434`; zero inferências reais nesta fase.
+Uma futura validação exige serviço/modelo autorizado existente e número de testes
+com rede permitida. A API oficial, webhooks assinados, anexos/histórico remoto e
+validação de produção ficam pendentes. A Fase 6 poderá aprofundar integração e
+reconciliação transacional após teste real autorizado, sem inferir cadastros ou vendas.
+
+O `install_script` passa a incluir `PUPPETEER_SKIP_DOWNLOAD=true`; o `start_skill`
+é atualizado para a Fase 5. Rascunho guardado não significa ambiente publicado;
+rever/guardar nas definições e publicar pelo produto. Restauração numa nova tarefa
+continua sem validação independente.

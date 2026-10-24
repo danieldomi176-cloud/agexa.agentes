@@ -50,3 +50,10 @@ agent-orchestrator.yaml
 .ao/
 .serena/
 tasks/
+# Private messaging state and databases (must normally live outside this checkout)
+messaging-auth/
+.wwebjs_auth/
+.wwebjs_cache/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm

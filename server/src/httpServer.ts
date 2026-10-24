@@ -118,7 +118,8 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
       layout: options.salesLayout ?? null,
       onLayout: (layout) => options.store.broadcast({ type: 'layoutLoaded', layout }),
     });
-    app.addHook('onClose', () => {
+    app.addHook('onClose', async () => {
+      await options.salesEngine?.messaging.shutdown().catch(() => {});
       options.salesEngine?.close();
     });
   }

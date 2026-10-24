@@ -1,5 +1,6 @@
 import type { CrmSnapshot } from './crm.js';
 import type { IntelligenceSnapshot } from './intelligence.js';
+import type { MessagingSnapshot } from './messaging.js';
 /** Commercial contracts are independent of the coding-provider protocol. */
 export const EMPLOYEES = [
   {
@@ -31,7 +32,8 @@ export type TaskKind =
   | 'crm_prepare'
   | 'crm_report'
   | 'crm_plan'
-  | 'crm_summary';
+  | 'crm_summary'
+  | 'messaging_work';
 export type TaskStatus =
   'queued' | 'running' | 'awaiting_approval' | 'blocked' | 'completed' | 'error' | 'cancelled';
 export type EmployeeStatus =
@@ -82,6 +84,7 @@ export interface SalesEvent {
   detail: string;
 }
 export interface SalesSnapshot {
+  messaging?: MessagingSnapshot;
   crm?: CrmSnapshot;
   intelligence?: IntelligenceSnapshot;
   version: 1;

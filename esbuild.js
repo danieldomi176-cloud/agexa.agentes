@@ -92,7 +92,7 @@ async function main() {
     sourcesContent: false,
     platform: 'node',
     outfile: 'dist/extension.js',
-    external: ['vscode'],
+    external: ['vscode', 'whatsapp-web.js'],
     define: versionDefine,
     logLevel: 'silent',
     plugins: [
@@ -139,6 +139,7 @@ async function buildCli() {
     platform: 'node',
     outfile: 'dist/cli.js',
     external: [
+      'whatsapp-web.js',
       'fastify',
       '@fastify/websocket',
       '@fastify/static',

@@ -456,6 +456,11 @@ async function main(): Promise<void> {
       // leave a child that ignores SIGHUP orphaned on a dead server.
       await ptyManager.disposeAll();
       runtime.dispose();
+      await salesEngine?.messaging
+        .shutdown()
+        .catch(() =>
+          console.error('Messaging browser cleanup failed; check the owned browser process.'),
+        );
       salesEngine?.close();
       server.stop();
       process.exit(0);

@@ -2,20 +2,22 @@
 
 **Organização que trabalha por ti.**
 
-O escritório comercial Agexa preserva o Pixel Agents, o editor e os oito funcionários.
-A Fase 4 acrescenta CRM persistente, importação CSV/listas autorizadas, qualificação,
-consentimento por canal, Kanban, versões de rascunhos, operações Nexus aprovadas pelo
-CEO e relatórios que distinguem simulações e confirmações manuais.
+O escritório comercial Agexa preserva o Pixel Agents, o editor, os oito funcionários
+e o CRM das fases anteriores. A Fase 5 acrescenta uma inbox persistente, aprovação
+individual de mensagens, modos manual/assistido e transferência da conversa ao CEO.
 
-**Sem Ollama, o CRM e as tarefas por regras funcionam.** Nesta instância não existe
-Ollama acessível: a integração IA foi testada com API simulada e não comprova
-inferência real. Nenhum modelo é descarregado automaticamente.
+**Conector experimental implementado, mas ligação real não validada.** O adaptador
+`whatsapp-web.js`/QR fica desligado por omissão e exige confirmação do administrador
+com número de testes. A API oficial é um contrato futuro, sem transporte ativo.
 
-Não há envio de mensagens, WhatsApp ou integração de cadastro/pagamentos. A análise
-de websites tem proteções SSRF e está bloqueada pelo transporte de proxy desta nuvem;
-CSV e listas estão operacionais. Ver [fontes e limitações](docs/AGEXA_SOURCES.md).
+Sem Ollama, usar atendimento manual e operações identificadas como regras. Não houve
+inferência real nem autenticação WhatsApp nesta instância: testes de mensagens e IA
+utilizam providers/clientes simulados em diretórios temporários. O modo automático
+está bloqueado; não há envio em massa ou mensagens comerciais não solicitadas.
 
-Ver [capturas desktop/mobile no GitHub](docs/screenshots/README.md).
+Ver [WhatsApp Center: utilização e limites](docs/AGEXA_MESSAGING.md),
+[fontes de prospeção](docs/AGEXA_SOURCES.md) e
+[capturas desktop/mobile no GitHub](docs/screenshots/README.md).
 
 Ver [instalação e plano técnico](docs/AGEXA.md) e
 [requisitos fornecidos pelo CEO](docs/AGEXA_REQUIREMENTS.md).

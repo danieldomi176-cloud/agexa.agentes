@@ -36,7 +36,7 @@ export function validateKnowledge(value: AgexaKnowledge): void {
 export class CommercialMemory {
   constructor(private readonly db: DatabaseSync) {
     const version = Number(db.prepare('PRAGMA user_version').get()?.user_version ?? 0);
-    if (version > 3) throw new Error('Versão do banco mais recente que esta aplicação');
+    if (version > 4) throw new Error('Versão do banco mais recente que esta aplicação');
     db.exec('BEGIN IMMEDIATE');
     try {
       const existing = new Set(

@@ -9,6 +9,7 @@ import { AgexaHeader } from './AgexaHeader.js';
 import type { CrmTab } from './CrmPanel.js';
 import { CrmPanel } from './CrmPanel.js';
 import { IntelligencePanel } from './IntelligencePanel.js';
+import { MessagingPanel } from './MessagingPanel.js';
 
 const statuses: Record<string, string> = {
   paused: 'Pausado',
@@ -152,7 +153,7 @@ function SalesPanel({
   const snapshot = office.snapshot!;
   const employee = snapshot.employees.find((e) => e.id === selected)!;
   const [tab, setTab] = useState<
-    'team' | 'tasks' | 'events' | 'intelligence' | 'nexus' | 'knowledge' | CrmTab
+    'team' | 'tasks' | 'events' | 'intelligence' | 'nexus' | 'knowledge' | 'messaging' | CrmTab
   >('team');
   const [kind, setKind] = useState<TaskKind>('prepare_brief');
   const [objective, setObjective] = useState('');
@@ -170,6 +171,7 @@ function SalesPanel({
     'marketing',
     'reports',
     'commercial',
+    'messaging',
   ].includes(tab);
   const ready = office.connection === 'connected' && !busy;
   const act = (route: string, body: unknown, done?: () => void): void => {
@@ -203,6 +205,9 @@ function SalesPanel({
       >
         {snapshot.suspended ? 'Retomar operações' : 'Suspender todas as operações'}
       </button>
+      <button className="agexa-danger" disabled={!ready} onClick={() => act('messaging/stop', {})}>
+        PARAR TODA A AUTOMAÇÃO
+      </button>
       <p className="agexa-subtle">Iniciar habilita a fila; não liga um modelo de IA.</p>
       <nav className="agexa-tabs" aria-label="Painel CEO">
         {(
@@ -219,6 +224,7 @@ function SalesPanel({
             ['marketing', 'Marketing'],
             ['reports', 'Relatórios'],
             ['commercial', 'Comercial'],
+            ['messaging', 'WhatsApp Center'],
           ] as const
         ).map(([value, label]) => (
           <button key={value} aria-pressed={tab === value} onClick={() => setTab(value)}>
@@ -489,7 +495,10 @@ function SalesPanel({
       {(tab === 'intelligence' || tab === 'nexus' || tab === 'knowledge') && (
         <IntelligencePanel office={office} tab={tab} act={act} ready={ready} />
       )}
-      {commercialTab && <CrmPanel office={office} tab={tab as CrmTab} act={act} ready={ready} />}
+      {tab === 'messaging' && <MessagingPanel office={office} act={act} ready={ready} />}
+      {commercialTab && tab !== 'messaging' && (
+        <CrmPanel office={office} tab={tab as CrmTab} act={act} ready={ready} />
+      )}
     </aside>
   );
 }

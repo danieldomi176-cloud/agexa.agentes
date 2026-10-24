@@ -48,7 +48,7 @@ it('migrates a v2 database and preserves every earlier identifier and business r
       tables.map((table) => [table, db.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all()]),
     );
     expect(createHash('sha256').update(JSON.stringify(after)).digest('hex')).toBe(digest);
-    expect(db.prepare('PRAGMA user_version').get()?.user_version).toBe(3);
+    expect(db.prepare('PRAGMA user_version').get()?.user_version).toBe(4);
     db.close();
     engine = new SalesEngine(root);
     expect(engine.crm.snapshot().companies).toHaveLength(0);

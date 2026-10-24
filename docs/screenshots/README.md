@@ -3,6 +3,19 @@
 Estas capturas foram produzidas durante os testes em dados isolados.
 A captura da Fase 3 utiliza uma API Ollama simulada e não comprova inferência com um modelo real.
 
+## Fase 5 — inbox e atendimento aprovado
+
+Mensagens e número **fictícios**, provider Mock, backend/SQLite reais em diretório
+isolado. Rascunhos gerados por regras, sem inferência. Os envios confirmados nesta
+captura são exclusivamente simulados. Não foi autenticada uma conta WhatsApp real.
+Nenhum QR, sessão ou conversa real foi publicado.
+
+![Fase 5: oito funcionários no escritório preservado](fase-5-escritorio-teste.png)
+
+![Fase 5: inbox simulada, convite aprovado e conversa atribuída ao CEO](fase-5-inbox-teste.png)
+
+![Fase 5: histórico no telemóvel com mensagens simuladas](fase-5-mobile-teste.png)
+
 ## Fase 4 — CRM e escritório
 
 Estas capturas usam apenas duas empresas fictícias, identificadas como `simulated`.

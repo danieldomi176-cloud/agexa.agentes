@@ -760,3 +760,83 @@
     min-width: 560px;
   }
 }
+
+.messaging-center {
+  min-width: 0;
+}
+.messaging-inbox {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(0, 2fr);
+  gap: 12px;
+  margin: 12px 0;
+}
+.messaging-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 640px;
+  overflow: auto;
+}
+.messaging-list button {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.messaging-list span {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.messaging-conversation {
+  min-width: 0;
+  border: 1px solid #5d3e7c;
+  border-radius: 6px;
+  padding: 12px;
+}
+.messaging-history {
+  max-height: 400px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0;
+}
+.messaging-message {
+  padding: 9px;
+  border: 1px solid #48345e;
+  border-radius: 8px;
+  background: #21182d;
+}
+.messaging-message.outbound {
+  margin-left: 15px;
+  background: #352147;
+}
+.messaging-message p,
+.messaging-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.messaging-message small {
+  color: #d8c2fa;
+}
+.messaging-qr img {
+  max-width: 100%;
+  width: 280px;
+}
+.messaging-qr {
+  margin: 12px 0;
+}
+.messaging-center a {
+  color: #ceabff;
+  text-decoration: underline;
+}
+@media (max-width: 1000px) {
+  .messaging-inbox {
+    grid-template-columns: 1fr;
+  }
+  .messaging-list {
+    max-height: 220px;
+  }
+}

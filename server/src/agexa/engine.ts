@@ -31,6 +31,8 @@ import {
 import { CrmError, CrmStore } from './crm/store.js';
 import { normalize } from './crm/validation.js';
 import { CommercialMemory } from './memory.js';
+import type { MessagingProvider } from './messaging/provider.js';
+import { MessagingService } from './messaging/service.js';
 import { OllamaInferenceAdapter } from './ollama.js';
 import { validateOperationalResult } from './prompts.js';
 
@@ -62,6 +64,7 @@ export class SalesEngine extends EventEmitter {
   private readonly lock: string;
   private readonly memory: CommercialMemory;
   readonly crm: CrmStore;
+  readonly messaging: MessagingService;
   private readonly inference: InferenceAdapter;
   private healthTimer: ReturnType<typeof setInterval> | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -72,6 +75,7 @@ export class SalesEngine extends EventEmitter {
   constructor(
     readonly directory: string,
     inference?: InferenceAdapter,
+    messagingProvider?: MessagingProvider,
   ) {
     super();
     fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
@@ -103,6 +107,18 @@ export class SalesEngine extends EventEmitter {
         this.inference.configure(this.memory.config());
         this.inference.setKnowledge(() => this.memory.knowledge());
       }
+      this.messaging = new MessagingService(
+        this.db,
+        directory,
+        {
+          crm: this.crm,
+          knowledge: () => this.memory.knowledge(),
+          suspended: () => this.suspended,
+          changed: () => this.changed(),
+          cancel: (id) => this.cancelMessagingTasks(id),
+        },
+        messagingProvider,
+      );
       for (const employee of EMPLOYEES)
         this.db.prepare('INSERT OR IGNORE INTO employees(id) VALUES (?)').run(employee.id);
       // Crash recovery never replays an uncertain inference automatically.
@@ -239,6 +255,7 @@ export class SalesEngine extends EventEmitter {
     return {
       version: 1,
       crm: this.crm.snapshot(),
+      messaging: this.messaging.snapshot(),
       suspended: this.suspended,
       ...(this.inference instanceof OllamaInferenceAdapter
         ? {
@@ -270,7 +287,7 @@ export class SalesEngine extends EventEmitter {
   }
 
   create(input: CreateSalesTask): SalesTask {
-    if (input.input?.crm !== undefined)
+    if (input.input?.crm !== undefined || input.input?.messaging !== undefined)
       throw new SalesError('Metadados CRM reservados às ferramentas comerciais autorizadas', 400);
     this.validate(input);
     if (
@@ -302,6 +319,7 @@ export class SalesEngine extends EventEmitter {
         'crm_report',
         'crm_plan',
         'crm_summary',
+        'messaging_work',
       ].includes(input.kind)
     )
       throw new SalesError('Operação não permitida', 400);
@@ -452,6 +470,82 @@ export class SalesEngine extends EventEmitter {
     return result;
   }
 
+  cancelMessagingTasks(conversationId?: string): void {
+    for (const row of this.db
+      .prepare(
+        "SELECT id,input FROM tasks WHERE status IN ('queued','blocked','awaiting_approval','running')",
+      )
+      .all()) {
+      const meta = JSON.parse(String(row.input)).messaging;
+      if (meta && (!conversationId || meta.conversationId === conversationId))
+        this.markCancelled(String(row.id), 'Participação na conversa suspensa pelo CEO');
+    }
+  }
+  queueMessagingWork(
+    conversationId: string,
+    employeeId: EmployeeId,
+    useAI: boolean,
+    dependencies: string[] = [],
+  ): SalesTask {
+    this.messaging.workContext(conversationId);
+    if (!EMPLOYEES.some((e) => e.id === employeeId))
+      throw new SalesError('Funcionário inválido', 400);
+    const message = this.messaging.store.latestInbound(conversationId);
+    const c = this.messaging.store.conversation(conversationId);
+    if (
+      this.db
+        .prepare(
+          "SELECT 1 FROM tasks WHERE status IN ('queued','running','blocked') AND json_extract(input,'$.messaging.conversationId')=?",
+        )
+        .get(conversationId) &&
+      !dependencies.length
+    )
+      throw new SalesError('Aguardar a tarefa desta conversa antes de iniciar outra');
+    const task = this.crm.atomic(() => {
+      const task = this.commercialTask(
+        {
+          employeeId,
+          kind: useAI ? 'ai_request' : 'messaging_work',
+          objective: `${employeeId}: analisar conversa e preparar material interno`,
+          input: {
+            authorized: true,
+            messaging: { conversationId, sourceMessageId: message.id },
+            simulated: c.simulated,
+          },
+        },
+        dependencies,
+      );
+      return task;
+    });
+    this.changed();
+    return task;
+  }
+  queueMessagingTeam(id: string, useAI: boolean): SalesTask[] {
+    const tasks = this.transaction(() => {
+      const out: SalesTask[] = [];
+      for (const employee of [
+        'nexus',
+        'hunter',
+        'atlas',
+        'maya',
+        'luna',
+        'victor',
+        'sophia',
+        'orion',
+      ] as EmployeeId[])
+        out.push(
+          this.queueMessagingWork(
+            id,
+            employee,
+            useAI && ['luna', 'victor', 'sophia', 'nexus', 'maya'].includes(employee),
+            out.length ? [out[out.length - 1].id] : [],
+          ),
+        );
+      return out;
+    });
+    this.changed();
+    return tasks;
+  }
   notifyCrm(): void {
     this.changed();
   }
@@ -1162,6 +1256,10 @@ export class SalesEngine extends EventEmitter {
         revenue: null,
       },
     };
+    if (task.input.messaging)
+      input.messagingContext = this.messaging.workContext(
+        String((task.input.messaging as { conversationId: string }).conversationId),
+      );
     const crm = crmInput(task);
     if (crm.companyId) input.crmCompany = modelCompany(this.crm.company(crm.companyId));
     if (crm.orderId && task.stage === 'summary')
@@ -1247,15 +1345,22 @@ export class SalesEngine extends EventEmitter {
     const started = performance.now();
     try {
       let result: Record<string, unknown>;
+      if (task.input.messaging)
+        this.messaging.workContext(
+          String((task.input.messaging as { conversationId: string }).conversationId),
+        );
       if (task.kind === 'ai_request')
         result = await this.inference.run(this.inferenceTask(task), {
           signal,
           objective: SALES_OBJECTIVE,
         });
       else {
-        const operation = task.kind.startsWith('crm_')
-          ? this.commercialOperation(task, signal)
-          : this.structuredOperation(task);
+        const operation =
+          task.kind === 'messaging_work'
+            ? this.messaging.operation(task)
+            : task.kind.startsWith('crm_')
+              ? this.commercialOperation(task, signal)
+              : this.structuredOperation(task);
         result = operation instanceof Promise ? await operation : operation;
       }
       if (!signal.aborted && !this.closed)
@@ -1299,6 +1404,7 @@ export class SalesEngine extends EventEmitter {
           task.id,
         );
       this.commercialCompleted(task, result, error);
+      this.messaging.completed(task, result, error);
       if (!error && typeof result?.summary === 'string')
         this.memory.add('summary', result.summary.slice(0, 2000), task.employeeId, task.id);
       if (task.workflowId) {
@@ -1399,6 +1505,7 @@ export class SalesEngine extends EventEmitter {
       for (const e of EMPLOYEES) this.interrupt(e.id);
     });
     this.closed = true;
+    this.messaging.close();
     this.db.close();
     fs.rmSync(this.lock, { force: true });
     this.removeAllListeners();
