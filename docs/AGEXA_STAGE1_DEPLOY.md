@@ -73,7 +73,9 @@ ficheiro de auto-criação com cobrança implícita. Nenhum serviço Render foi 
    `PORT`, `RENDER` e `RENDER_EXTERNAL_URL` são fornecidos pela plataforma:
    não inventar valores. Sem override, a origem HTTPS usa o URL real da plataforma.
 5. Preparar um backup consistente dos **dados anteriores**, com acesso privado.
-   Conservar a origem até verificar restauração e IDs. Não usar GitHub/chat para
+   No corte final, suspender operações e parar graciosamente a origem antes da
+   cópia final; promover só um destino, sem dois motores ativos sobre cópias dos
+   mesmos dados. Conservar a origem desligada até verificar restauração e IDs. Não usar GitHub/chat para
    transferir SQLite, token ou sessões. Não copiar SQLite vivo sem WAL; usar o
    backup SQLite e transferir configuração/sessões privadas de forma consistente.
 6. O modo manutenção permite o primeiro arranque para preparar/restaurar o volume:
@@ -85,7 +87,10 @@ ficheiro de auto-criação com cobrança implícita. Nenhum serviço Render foi 
    Não criar endpoint de upload/download de base, shell ou terminal públicos.
 7. Após copiar, verificar `sales.sqlite` com `PRAGMA integrity_check`, versão/IDs e
    hashes das tabelas; diretório 0700 e ficheiros privados 0600. Preservar token e
-   autenticação/sessões existentes; não substituir por fixtures. A entrada normal
+   autenticação/sessões existentes; não substituir por fixtures. Não transferir
+   `sales.lock` ou registos PID da máquina anterior: são estado de processo. Se
+   encontrar um lock no destino, inspecionar o dono/processo antes de o retirar;
+   nunca apagar lock vivo nem WAL/SHM de uma base aberta. A entrada normal
    **recusa arranque sem sales.sqlite existente**, evitando reiniciar o projeto vazio.
 8. No gestor de segredos do Render, guardar `AGEXA_CEO_BRIDGE_SECRET` bruto, forte,
    exclusivo da ponte (≥32 caracteres), por canal seguro. Guardar a mesma chave no
