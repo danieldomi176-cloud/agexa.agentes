@@ -133,6 +133,7 @@ export interface ConversionSnapshot {
   integration: {
     status: string;
     secretConfigured: boolean;
+    secretStatus?: 'missing' | 'ready' | 'invalid';
     lastSync: string | null;
     error: string | null;
     cursor: string | null;

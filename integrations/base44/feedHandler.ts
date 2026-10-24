@@ -1,19 +1,7 @@
 /** Shared read-only function handler. Deploy inside the authorized Base44 app. */
-export interface FeedEvent {
-  eventId: string;
-  appId: string;
-  kind: string;
-  occurredAt: string;
-  accountId: string;
-  reference?: string;
-  startAt?: string;
-  endAt?: string;
-  paymentId?: string;
-  amountMinor?: number;
-  currency?: string;
-  verified?: boolean;
-  evidence: string;
-}
+import type { ConversionFact } from '../../core/src/conversion.js';
+import { validateFact } from '../../core/src/conversionContract.js';
+export type FeedEvent = ConversionFact;
 export interface FeedDependencies {
   appId: string;
   secret: string;
@@ -123,7 +111,15 @@ export function createFeedHandler(deps: FeedDependencies): (req: Request) => Pro
       return new Response('Invalid contract', { status: 400 });
     try {
       const feed = await deps.read(input.cursor, input.limit);
-      if (feed.events.length > 100 || feed.events.some((e) => e.appId !== deps.appId))
+      if (
+        !Array.isArray(feed.events) ||
+        feed.events.length > input.limit ||
+        !(
+          feed.nextCursor === null ||
+          (typeof feed.nextCursor === 'string' && feed.nextCursor.length <= 2000)
+        ) ||
+        feed.events.some((e) => validateFact(e, deps.now?.() ?? Date.now()).appId !== deps.appId)
+      )
         return new Response('Invalid domain feed', { status: 500 });
       const body = JSON.stringify({
         appId: deps.appId,

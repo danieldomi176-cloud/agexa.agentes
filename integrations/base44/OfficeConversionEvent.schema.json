@@ -3,27 +3,90 @@
   "title": "OfficeConversionEvent — proposed private backend entity",
   "description": "Contract artifact, not a claim that this entity exists or that Base44 imports this exact file. Configure and verify private permissions in the real editor. Only trusted backend domain events may create records.",
   "type": "object",
-  "required": ["payload"],
+  "required": [
+    "event_key",
+    "payload"
+  ],
   "properties": {
     "payload": {
       "type": "object",
-      "required": ["eventId", "appId", "kind", "occurredAt", "accountId", "evidence"],
+      "required": [
+        "eventId",
+        "appId",
+        "kind",
+        "occurredAt",
+        "accountId",
+        "evidence"
+      ],
       "additionalProperties": false,
       "properties": {
-        "eventId": {"type":"string","minLength":1,"maxLength":200},
-        "appId": {"type":"string","minLength":1,"maxLength":200},
-        "kind": {"enum":["account_created","trial_started","trial_extended","trial_ended","trial_cancelled","payment_confirmed"]},
-        "occurredAt": {"type":"string","format":"date-time"},
-        "accountId": {"type":"string","minLength":1,"maxLength":200},
-        "reference": {"type":"string","maxLength":200},
-        "startAt": {"type":"string","format":"date-time"},
-        "endAt": {"type":"string","format":"date-time"},
-        "paymentId": {"type":"string","maxLength":200},
-        "amountMinor": {"type":"integer","minimum":1},
-        "currency": {"type":"string","pattern":"^[A-Z]{3}$"},
-        "verified": {"type":"boolean"},
-        "evidence": {"type":"string","minLength":1,"maxLength":1000}
+        "eventId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "appId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "kind": {
+          "enum": [
+            "account_created",
+            "trial_started",
+            "trial_extended",
+            "trial_ended",
+            "trial_cancelled",
+            "payment_confirmed"
+          ]
+        },
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "accountId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "reference": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "startAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "paymentId": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "amountMinor": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "verified": {
+          "type": "boolean"
+        },
+        "evidence": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        }
       }
+    },
+    "event_key": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 of [appId,eventId]; backend only. Enforce unique if actual platform supports it."
     }
   }
 }

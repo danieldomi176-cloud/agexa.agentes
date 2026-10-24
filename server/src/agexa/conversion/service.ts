@@ -14,6 +14,7 @@ import type { CrmStore } from '../crm/store.js';
 import { publicWebsite } from '../crm/validation.js';
 import { AgexaBase44Connector } from './connector.js';
 import { isoDate, opaque } from './contract.js';
+import { readBase44Secret } from './secret.js';
 import { ConversionStore } from './store.js';
 const now = () => new Date().toISOString();
 const urls = (body: string): string[] =>
@@ -28,7 +29,7 @@ export class ConversionService {
     private readonly knowledge: () => AgexaKnowledge,
     private readonly changed: () => void,
     readonly connector = new AgexaBase44Connector(),
-    private readonly secret = () => process.env.AGEXA_BASE44_EVENT_SECRET ?? '',
+    private readonly secret = () => readBase44Secret().value,
   ) {
     this.store = new ConversionStore(db, crm);
     this.backfillInvites();
@@ -407,6 +408,7 @@ export class ConversionService {
       integration: {
         ...integration,
         secretConfigured: this.secret().length >= 32,
+        secretStatus: this.secret().length >= 32 ? 'ready' : readBase44Secret().status,
         capabilities: [
           'Feed mínimo assinado; ativação depende da aplicação e do plano',
           'Confirmação manual auditada sempre disponível',

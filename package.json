@@ -103,7 +103,7 @@
     "asyncapi:validate": "node scripts/validate-asyncapi.mjs",
     "check-types": "tsc --noEmit && tsc --noEmit -p server/tsconfig.test.json",
     "prepare": "husky",
-    "lint": "eslint adapters/vscode server core && cd webview-ui && eslint .",
+    "lint": "eslint adapters/vscode server core integrations/base44 --ignore-pattern integrations/base44/deploy && cd webview-ui && eslint .",
     "lint:fix": "eslint adapters/vscode server core --fix && cd webview-ui && eslint . --fix",
     "import-tileset": "tsx scripts/import-tileset-cli.ts",
     "format": "prettier --write \"adapters/vscode/**/*.ts\" \"server/**/*.ts\" \"core/src/**/*.ts\" \"webview-ui/src/**/*.{ts,tsx,css}\" \"*.{js,mjs}\" \"webview-ui/*.{js,ts}\"",
@@ -130,7 +130,10 @@
     "test:agexa:conversion:e2e": "node scripts/agexa-conversion-e2e.mjs",
     "test:agexa:operational:e2e": "node --import tsx scripts/agexa-conversion-e2e.mjs --operational",
     "test:agexa:cloud:e2e": "node scripts/agexa-conversion-e2e.mjs --cloud-setup",
-    "test:agexa:restore": "node scripts/agexa-restore-e2e.mjs"
+    "test:agexa:restore": "node scripts/agexa-restore-e2e.mjs",
+    "base44:bundle": "node scripts/build-base44-functions.mjs",
+    "base44:check": "node scripts/build-base44-functions.mjs --check",
+    "test:agexa:base44:e2e": "node scripts/agexa-base44-e2e.mjs"
   },
   "devDependencies": {
     "@asyncapi/modelina": "^5.10.1",

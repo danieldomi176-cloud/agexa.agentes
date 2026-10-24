@@ -123,7 +123,9 @@ export function ConversionPanel({
         ·{' '}
         {data.integration.secretConfigured
           ? 'Chave disponível no backend; autenticação ainda depende do feed'
-          : 'Sem chave de integração no backend'}
+          : data.integration.secretStatus === 'invalid'
+            ? 'Configuração da chave inválida no backend; consultar o operador'
+            : 'Sem chave de integração no backend'}
       </p>
       {data.integration.error && <p role="alert">{data.integration.error}</p>}
       {error && <p role="alert">{error}</p>}
@@ -457,8 +459,9 @@ export function ConversionPanel({
             <a href="https://agexa-flix.base44.app" target="_blank" rel="noreferrer">
               agexa-flix.base44.app
             </a>
-            . O ID interno e a capacidade de Backend Functions não são deduzidos do domínio.
-            Confirmar abaixo o ponto oficial de cadastro e a oferta.
+            . ID confirmado pelo CEO: 6970e6a789a360f2b09ea09d. Endpoint e capacidade de Backend
+            Functions ainda precisam de verificação na aplicação. Confirmar abaixo o ponto oficial
+            de cadastro e a oferta.
           </p>
           <IntelligencePanel office={office} tab="knowledge" act={act} ready={ready} />
         </>
@@ -577,6 +580,33 @@ function IntegrationConfig({
   return (
     <>
       <h4>AgexaBase44Connector</h4>
+      <ul aria-label="Prontidão da integração Base44">
+        <li>App ID: {data.config.appId || 'Por configurar'}</li>
+        <li>
+          Endpoint:{' '}
+          {data.config.endpoint
+            ? 'Guardado; não implica publicação verificada'
+            : 'Por obter na função agexaConversionFeed publicada'}
+        </li>
+        <li>
+          HMAC:{' '}
+          {data.integration.secretConfigured
+            ? 'Disponível no backend; igualdade da chave depende de autenticação real'
+            : 'Provisionar no backend a mesma chave da Base44, sem a enviar pelo chat'}
+        </li>
+        <li>
+          Sincronização:{' '}
+          {data.integration.status === 'authenticated_feed'
+            ? 'Último lote autenticado'
+            : 'Sem confirmação de um lote real autenticado nesta configuração'}
+        </li>
+        <li>
+          Referência comercial:{' '}
+          {data.config.referenceSupported
+            ? 'Capacidade declarada pelo operador'
+            : 'Captura não confirmada; associação manual disponível'}
+        </li>
+      </ul>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -651,7 +681,12 @@ function IntegrationConfig({
       </form>
       <div className="crm-actions">
         <button
-          disabled={!ready || value.syncMode !== 'on_demand' || !data.integration.secretConfigured}
+          disabled={
+            !ready ||
+            data.config.syncMode !== 'on_demand' ||
+            !data.config.endpoint ||
+            !data.integration.secretConfigured
+          }
           onClick={() => act('conversion/sync', {})}
         >
           Sincronizar feed autorizado

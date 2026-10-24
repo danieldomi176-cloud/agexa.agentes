@@ -8,6 +8,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import type { ConversionFact } from '../../core/src/conversion.js';
 import { createFeedHandler } from '../../integrations/base44/feedHandler.js';
+import { readConversionFeed } from '../../integrations/base44/feedReader.js';
 import type { FeedTransport, SignedResponse } from '../src/agexa/conversion/connector.js';
 import { AgexaBase44Connector } from '../src/agexa/conversion/connector.js';
 import { sign } from '../src/agexa/conversion/contract.js';
@@ -210,6 +211,28 @@ it('rejects a batch containing an invalid payment without applying its otherwise
       evidence: 'Not verified',
     },
   ];
+  // The hardened function now refuses invalid domain facts. Inject a malicious,
+  // correctly signed response to retain the Office atomic-batch rejection check.
+  const invalidFacts = facts;
+  facts = [];
+  mutate = (response) => {
+    const payload = JSON.parse(response.body);
+    payload.events = invalidFacts;
+    const body = JSON.stringify(payload);
+    return {
+      ...response,
+      body,
+      headers: {
+        ...response.headers,
+        'x-agexa-signature': sign(
+          SECRET,
+          response.headers['x-agexa-timestamp'],
+          response.headers['x-agexa-nonce'],
+          body,
+        ),
+      },
+    };
+  };
   await expect(engine.conversion.sync()).rejects.toThrow(/Pagamento/);
   expect(engine.conversion.snapshot().accounts).toHaveLength(0);
   expect(engine.conversion.store.events().total).toBe(0);
@@ -338,4 +361,101 @@ it('denies unsigned function calls and wrong app scope without querying the app'
     }),
   );
   expect(r.status).toBe(400);
+});
+it('persists an SDK page cursor across restart and cycles safely to later domain events', async () => {
+  engine.close();
+  const pages = [
+    {
+      items: [
+        {
+          payload: {
+            eventId: 'page-1',
+            appId: 'app-fixture',
+            kind: 'account_created',
+            occurredAt: new Date().toISOString(),
+            accountId: 'page-account-1',
+            evidence: 'TEST domain event',
+          },
+        },
+      ],
+      next_cursor: 'sdk-page-2',
+    },
+    {
+      items: [
+        {
+          payload: {
+            eventId: 'page-2',
+            appId: 'app-fixture',
+            kind: 'account_created',
+            occurredAt: new Date().toISOString(),
+            accountId: 'page-account-2',
+            evidence: 'TEST domain event',
+          },
+        },
+      ],
+      next_cursor: null,
+    },
+  ];
+  const options: unknown[] = [];
+  const entity = {
+    list: async (input: { cursor?: string }) => {
+      options.push(input);
+      return input.cursor ? pages[1] : pages[0];
+    },
+  };
+  const paged: FeedTransport = async (url, body, headers) => {
+    const handler = createFeedHandler({
+      appId: 'app-fixture',
+      secret: SECRET,
+      read: (cursor, limit) => readConversionFeed(entity, 'app-fixture', cursor, limit),
+    });
+    const response = await handler(new Request(url, { method: 'POST', body, headers }));
+    return {
+      status: response.status,
+      body: await response.text(),
+      headers: (() => {
+        const result: Record<string, string> = {};
+        response.headers.forEach((value, key) => {
+          result[key] = value;
+        });
+        return result;
+      })(),
+    };
+  };
+  configure(new AgexaBase44Connector(paged));
+  await engine.conversion.sync();
+  const cursor = engine.conversion.store.integration().cursor;
+  engine.close();
+  // Re-open without configure(): configuration must not reset the saved cursor.
+  engine = new SalesEngine(root, undefined, undefined, new AgexaBase44Connector(paged));
+  expect(engine.conversion.store.integration().cursor).toBe(cursor);
+  await engine.conversion.sync();
+  expect(options[1]).toEqual({ cursor: 'sdk-page-2', limit: 100 });
+  expect(engine.conversion.store.events().total).toBe(2);
+  // Finished snapshot restarts; stable IDs are counted as duplicates, not conversions.
+  expect(await engine.conversion.sync()).toMatchObject({ duplicates: 1 });
+  expect(options[2]).toEqual({ sort: 'created_date', fields: ['payload'], limit: 100 });
+  expect(engine.conversion.store.events().total).toBe(2);
+  expect(engine.conversion.snapshot().metrics.pendingEvents).toBe(2);
+});
+it.each(['network', 'http503', 'http404'])(
+  'preserves ledger and cursor after %s transport failure',
+  async (mode) => {
+    const before = engine.conversion.store.events().total;
+    const failing: FeedTransport = async () => {
+      if (mode === 'network') throw Error('TEST network unavailable');
+      return { status: mode === 'http503' ? 503 : 404, body: 'TEST unavailable', headers: {} };
+    };
+    engine.close();
+    configure(new AgexaBase44Connector(failing));
+    await expect(engine.conversion.sync()).rejects.toThrow();
+    expect(engine.conversion.store.events().total).toBe(before);
+    expect(engine.conversion.store.integration().cursor).toBeNull();
+    expect(engine.conversion.store.integration().status).toBe('error');
+  },
+);
+it('exposes only safe key readiness in the snapshot and never raw HMAC material', () => {
+  const snapshot = engine.conversion.snapshot();
+  expect(snapshot.integration).toMatchObject({ secretConfigured: true, secretStatus: 'ready' });
+  expect(JSON.stringify(snapshot)).not.toContain(SECRET);
 });

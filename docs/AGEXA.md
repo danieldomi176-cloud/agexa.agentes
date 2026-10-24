@@ -1130,3 +1130,38 @@ Após arranque, todos os hashes anteriores coincidiram; só depois se guardou a
 preferência Gemini com modelo vazio, flags de dados/nível gratuito falsas e teto de 20.
 Não se ativou inferência, oferta, canal ou integração externa. A chave continua
 ausente; prontidão cloud pendente; estado comercial anterior preservado.
+
+### Integração completa Base44 — código preparado, validação externa pendente
+
+App ID agora confirmado pelo CEO: **6970e6a789a360f2b09ea09d**. Guardado no Office
+pela API privada após backup consistente e comparação de todas as tabelas no
+arranque. Mantidos esquema v5, oito funcionários, escritório/editor, dados e IA
+cloud/modo leve. Só configuração, uma auditoria e a sequência correspondente mudaram.
+Branch de integração parte da entrega Fase 7, sem reset nem force-push.
+
+O mesmo Conversion Engine/conector recebe o contrato partilhado com a função.
+Corrigida a continuação por cursor do SDK 0.8.57 e preparado reinício de percursos
+para consultar eventos novos, deduplicados pelo ledger existente. Helper interno
+para publicação autoritativa e validação de `agexa_ref`; hooks/outbox reais ainda
+exigem acesso ao código Base44. Dois módulos únicos prontos para colar no editor,
+com geração/verificação locais, sem alegar deploy ou compilação Deno.
+
+Chave bruta suportada por variável de runtime ou `AGEXA_BASE44_EVENT_SECRET_FILE`
+montado privadamente. Mesma chave da Base44, sem inventar substituta, frontend ou
+SQLite. Indicadores administrativos distinguem chave ausente/inválida, endpoint,
+capacidade de captura e autenticação. O segredo continua ausente nesta execução;
+endpoint desconhecido. A oferta de sete dias e captura automática continuam inativas.
+
+**1.154 testes aprovados** (196 interface + 951 servidor + 7 contratos), mantendo os
+1.135 anteriores; build/tipos/lint, AsyncAPI, smoke e oito cenários Chromium aprovados.
+Instalação limpa/recuperação verificadas na mesma máquina. Testes de SDK/feed são
+isolados, sem inferência, Base44 ou WhatsApp reais. Plano/RLS, função publicada,
+regras reais do teste e pagamento continuam por validar no editor autorizado.
+O transporte não remove proxy/TLS/SSRF para contornar a rede.
+
+Ver [relatório A–E](AGEXA_BASE44_REPORT.md), [estado](AGEXA_BASE44.md) e
+[passos exatos de implantação e aceitação](AGEXA_BASE44_DEPLOY.md).
+As capturas desktop/mobile estão em `docs/screenshots/base44-setup-*.png` para
+consulta no GitHub; mostram configuração pendente num backend isolado.
+`install_script` mantém-se; `start_skill`, commit e requisito não secreto do caminho
+de montagem são preparados no rascunho do ambiente para revisão/publicação.
