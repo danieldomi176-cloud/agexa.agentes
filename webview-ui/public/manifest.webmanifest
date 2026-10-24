@@ -1,0 +1,21 @@
+{
+  "name": "AGEXA AI OFFICE",
+  "short_name": "Agexa",
+  "description": "Organização que trabalha por ti. Base Pixel Agents — Fase 1.",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#111018",
+  "theme_color": "#7028E8",
+  "icons": [
+    {
+      "src": "icons/icon-256.png?v=2",
+      "sizes": "256x256",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png?v=2",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
