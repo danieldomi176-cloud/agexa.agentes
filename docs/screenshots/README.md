@@ -3,6 +3,21 @@
 Estas capturas foram produzidas durante os testes em dados isolados.
 A captura da Fase 3 utiliza uma API Ollama simulada e não comprova inferência com um modelo real.
 
+## Fase 6 — conversões e Free Trial Tracker
+
+Backend/SQLite reais em diretório temporário, **dados comerciais fictícios**.
+Três contas/testes e um recibo são explicitamente simulados; o funil real permanece
+zero. O convite usa MockWhatsAppProvider, sem conta real, e o cenário não executa
+inferência. Não houve autenticação Base44. As capturas não representam vendas reais.
+
+![Fase 6: os oito funcionários no escritório preservado](fase-6-escritorio-teste.png)
+
+![Fase 6: funil e confirmações separadas por origem](fase-6-conversoes-teste.png)
+
+![Fase 6: datas e estados dos testes fictícios](fase-6-tracker-teste.png)
+
+![Fase 6: tracker no telemóvel](fase-6-mobile-teste.png)
+
 ## Fase 5 — inbox e atendimento aprovado
 
 Mensagens e número **fictícios**, provider Mock, backend/SQLite reais em diretório

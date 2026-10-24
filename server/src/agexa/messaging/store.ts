@@ -26,7 +26,7 @@ export class MessagingStore {
    CREATE TABLE IF NOT EXISTS messaging_events(provider TEXT NOT NULL,externalId TEXT NOT NULL,kind TEXT NOT NULL,createdAt TEXT NOT NULL,PRIMARY KEY(provider,externalId,kind));
    CREATE INDEX IF NOT EXISTS messaging_inbox ON messaging_conversations(provider,updatedAt);
    CREATE INDEX IF NOT EXISTS messaging_history ON messaging_messages(conversationId,createdAt);
-   PRAGMA user_version=4; RELEASE messaging_migration;`);
+   ${Number(db.prepare('PRAGMA user_version').get()?.user_version ?? 0) < 4 ? 'PRAGMA user_version=4;' : ''} RELEASE messaging_migration;`);
     // No automatic replay of uncertain deliveries across restart.
     this.atomic(() => {
       const interrupted = db

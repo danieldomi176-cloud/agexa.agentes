@@ -840,3 +840,30 @@
     max-height: 220px;
   }
 }
+
+.conversion-module {
+  min-width: 0;
+}
+.conversion-module small {
+  display: block;
+  color: #c9b2e4;
+  font-size: 10px;
+}
+.conversion-module h4 {
+  color: #d8c2fa;
+  margin: 16px 0 8px;
+}
+.conversion-module .crm-metrics {
+  margin-bottom: 16px;
+}
+.conversion-json {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 360px;
+  overflow: auto;
+  padding: 10px;
+  background: #21182d;
+}
+.conversion-module a {
+  color: #ceabff;
+}

@@ -2,22 +2,24 @@
 
 **Organização que trabalha por ti.**
 
-O escritório comercial Agexa preserva o Pixel Agents, o editor, os oito funcionários
-e o CRM das fases anteriores. A Fase 5 acrescenta uma inbox persistente, aprovação
-individual de mensagens, modos manual/assistido e transferência da conversa ao CEO.
+O escritório comercial Agexa preserva Pixel Agents, editor, oito funcionários,
+CRM e inbox. A Fase 6 acrescenta o Conversion Engine: factos auditados de cadastro,
+teste e pagamento, referências opacas, Free Trial Tracker, acompanhamento do CEO e
+relatórios separados por origem.
 
-**Conector experimental implementado, mas ligação real não validada.** O adaptador
-`whatsapp-web.js`/QR fica desligado por omissão e exige confirmação do administrador
-com número de testes. A API oficial é um contrato futuro, sem transporte ativo.
+O percurso manual é funcional. O **conector Base44 e o modelo de Backend Function
+estão preparados, mas a integração real não foi autenticada nem validada**. O acesso
+a `agexa-flix.base44.app` e à documentação web foi bloqueado por esta rede; não se
+presumem ID interno, permissões, plano ou suporte a referências no cadastro.
 
-Sem Ollama, usar atendimento manual e operações identificadas como regras. Não houve
-inferência real nem autenticação WhatsApp nesta instância: testes de mensagens e IA
-utilizam providers/clientes simulados em diretórios temporários. O modo automático
-está bloqueado; não há envio em massa ou mensagens comerciais não solicitadas.
+Sem Ollama, usar regras e atendimento manual. Não houve inferência real nem
+WhatsApp real nesta instância. O modo automático continua bloqueado. Testes e
+capturas usam dados fictícios; não representam vendas reais.
 
-Ver [WhatsApp Center: utilização e limites](docs/AGEXA_MESSAGING.md),
-[fontes de prospeção](docs/AGEXA_SOURCES.md) e
-[capturas desktop/mobile no GitHub](docs/screenshots/README.md).
+Ver [Conversion Engine](docs/AGEXA_CONVERSION.md),
+[integração Base44](docs/AGEXA_BASE44.md),
+[validação independente IA/WhatsApp](docs/AGEXA_VALIDATION.md) e
+[capturas no GitHub](docs/screenshots/README.md).
 
 Ver [instalação e plano técnico](docs/AGEXA.md) e
 [requisitos fornecidos pelo CEO](docs/AGEXA_REQUIREMENTS.md).

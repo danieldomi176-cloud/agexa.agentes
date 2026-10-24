@@ -245,6 +245,16 @@ it('updates CRM and assigns CEO atomically after a fake client confirms an invit
     expect(engine.crm.company(id).stage).toBe('ceo');
     expect(engine.messaging.store.conversation(c.id).owner).toBe('ceo');
     expect(engine.crm.detail(id).handoffs).toHaveLength(1);
+    engine.moveCrm(id, 'paying', {
+      independentlyVerified: true,
+      evidence: 'TESTE: confirmação manual anterior sem montante no novo ledger',
+      occurredAt: new Date().toISOString(),
+    });
+    const followup = engine.conversion.snapshot().followups[0];
+    expect(() => engine.conversion.followup(followup.id, '', null, 'Não convertido')).toThrow(
+      /pagante/,
+    );
+    expect(engine.crm.company(id).stage).toBe('paying');
   } finally {
     engine.close();
   }

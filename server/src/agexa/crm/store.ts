@@ -668,6 +668,7 @@ export class CrmStore {
       'ceo',
       'account',
       'trial',
+      'trial_ended',
       'paying',
     ].includes(stage);
     if (external) {
@@ -723,6 +724,20 @@ export class CrmStore {
       );
     });
   }
+  recordConversionFact(id: string, stage: PipelineStage, evidence: string): void {
+    if (this.company(id).recordMode === 'simulated')
+      throw new CrmError('Simulação não confirma conversão real');
+    if (this.company(id).stage === 'paying') stage = 'paying';
+    this.atomic(() => {
+      this.db
+        .prepare('INSERT INTO crm_verifications VALUES (?,?,?,?,?,?)')
+        .run(randomUUID(), id, stage, evidence, now(), now());
+      this.db
+        .prepare('UPDATE crm_companies SET stage=?,updatedAt=? WHERE id=?')
+        .run(stage, now(), id);
+      this.activity('conversion_fact_confirmed', evidence, id, null, 'sophia');
+    });
+  }
   recordMessagingHandoff(id: string, evidence: string): void {
     const company = this.company(id);
     if (company.recordMode === 'simulated')
@@ -733,7 +748,9 @@ export class CrmStore {
           .prepare('INSERT INTO crm_verifications VALUES (?,?,?,?,?,?)')
           .run(randomUUID(), id, stage, evidence, now(), now());
       this.db
-        .prepare("UPDATE crm_companies SET stage='ceo',lastInteraction=?,updatedAt=? WHERE id=?")
+        .prepare(
+          "UPDATE crm_companies SET stage=CASE WHEN stage IN ('account','trial','trial_ended','paying') THEN stage ELSE 'ceo' END,lastInteraction=?,updatedAt=? WHERE id=?",
+        )
         .run(now(), now(), id);
       this.activity('messaging_handoff_confirmed', evidence, id, null, 'sophia');
     });
@@ -890,7 +907,7 @@ export class CrmStore {
         )
         .all() as unknown as CrmAnalytics['agents'],
       provenance:
-        'Dados registados; conversões apenas com evidência independente confirmada pelo CEO',
+        'Confirmações auditadas do CEO ou integração autenticada; consultar origem no Conversion Engine',
     };
   }
   orders(): CommercialOrder[] {

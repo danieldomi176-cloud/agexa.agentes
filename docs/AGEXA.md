@@ -906,3 +906,109 @@ O `install_script` passa a incluir `PUPPETEER_SKIP_DOWNLOAD=true`; o `start_skil
 é atualizado para a Fase 5. Rascunho guardado não significa ambiente publicado;
 rever/guardar nas definições e publicar pelo produto. Restauração numa nova tarefa
 continua sem validação independente.
+
+## Fase 6 — Conversion Engine, Base44 e Free Trial Tracker
+
+Implementada sobre `ecc7ae8c0aaa44d462be6dccfe51be221828f0f0`, em
+`agexa/phase-6`. Não se reconstruíram escritório, filas, CRM, inbox ou transferência.
+Preservam-se os oito personagens, editor original, consentimentos, IDs e histórico.
+
+O novo painel **Conversões** inclui funil de empresas, factos de conta/teste/recibo,
+atribuição por referência/conta exata ou associação auditada, Free Trial Tracker,
+acompanhamento e notificações persistentes do CEO. Pagamento exige confirmação
+independente, recibo e montante positivo. Simulações não entram no funil real.
+
+O percurso de confirmação manual funciona sem integração, modelo ou canal conectado.
+Registos manuais são identificados; não se apresentam como verificações automáticas.
+As datas são fornecidas/confirmadas, não inferidas de links. O fim previsto atingido
+fica a aguardar evento de expiração. Eventos repetidos, recibos repetidos, aliases e
+ordem de chegada não devem gerar contas/receita duplicadas ou regressão do estado pago.
+Confirmações anteriores sem datas/valor continuam no CRM, separadas dos novos factos.
+
+A transferência Fase 5 continua a atribuir a conversa ao CEO e bloquear agentes.
+A nova projeção acrescenta contexto, argumentos efetivamente enviados, objeções
+classificadas em mensagens recebidas, seguimento interno e estado da conta. Confirmar
+cadastro ou pagamento não produz mensagens nem devolve a conversa aos agentes.
+Nexus/Sophia/Orion podem analisar as métricas internamente sem alterar factos.
+
+### Base44 e endereço indicado pelo CEO
+
+O CEO forneceu `https://agexa-flix.base44.app`. Guardar o URL na base comercial
+existente não ativa a oferta. O ID interno, esquema, plano e capacidade Backend
+Functions não foram deduzidos do slug. A oferta permanece desativada até confirmação.
+
+Foi inspecionado o pacote oficial `@base44/sdk` 0.8.57 e a documentação/código oficiais
+acessíveis pelo GitHub. O SDK declara service role disponível apenas em Backend
+Functions alojadas na Base44. O Office não usa privilégios administrativos externos.
+O domínio da aplicação, documentação web e preços devolveram HTTP 403 desta rede.
+Não se tentaram contornos nem foi criada subscrição.
+
+`AgexaBase44Connector` lê um feed mínimo HMAC assinado. O modelo de função Deno em
+`integrations/base44/` é para implantação no backend autorizado, após criar entidade
+privada e ligar factos reais do domínio. Não foi publicado, autenticado ou validado
+na aplicação real; testes do contrato usam handler/transporte injetados. Ainda faltam
+ID/endpoint/permissões reais, chave segura, mapeamento das entidades e validação da
+rede/runtime. A alternativa manual não exige subscrição adicional obrigatória.
+
+Referências UUID só são adicionadas ao link quando o CEO confirmar que o cadastro
+real as captura. Por omissão preserva-se o URL oficial. Referência não contém telefone,
+nome ou segredo. Não se atribui cadastro por nome ou abertura de um link.
+
+### Migração, confiança e verificações
+
+Migração aditiva v4 → v5 com tabelas `conversion_config`, `conversion_references`,
+`conversion_invites`, `conversion_events`, `conversion_accounts`,
+`conversion_account_aliases`, `conversion_trials`, `conversion_payments`,
+`conversion_followups`, `conversion_notices`, `conversion_objections`,
+`conversion_audit`, `conversion_sync_runs` e `conversion_validations`, mais índices.
+
+Antes da migração foi feito backup SQLite consistente privado e fingerprint de todas
+as tabelas existentes, incluindo CRM/messaging. A base operacional não recebeu
+fixtures de contas, testes, recibos ou mensagens. A conferência de preservação e o
+arranque são efetuados antes de guardar o URL informado pelo CEO como configuração
+auditada. Nenhum token, QR, sessão ou conversa real vai para Git.
+
+Autenticação administrativa existente protege todos os endpoints. Não há webhook
+público. A função de origem valida HMAC/app/timestamp/nonce antes de ler dados.
+O Office verifica escopo, assinatura, nonce e contrato; bloqueia SSRF/redirects e
+recusa este proxy sem transporte com DNS fixado. Não remove proxy nem desativa TLS.
+A chave é exclusiva do backend; nenhum campo frontend aceita segredos.
+
+Há journal de sincronização, cursor, idempotência de eventos/recibos, reconciliação,
+limites e retenção de payloads antigos com tombstones para não reprocessar factos.
+Datas/valores e notificações têm origem manual, autenticada ou simulada explícita.
+
+Checks executados: build/tipos/lint, **1.105 testes** (196 interface + 902 servidor +
+7 contratos), AsyncAPI e cinco cenários Chromium das Fases 2–6. Preservam-se os
+1.057 testes anteriores; acrescentaram-se 48. Os testes antigos de migração mantêm
+as comparações de dados e passam a esperar a versão atual v5.
+
+O cenário Fase 6 usa backend/SQLite e dados fictícios: convite Mock, CEO, factos
+manuais, teste com datas, recibo simulado, alertas, validação IA indisponível,
+reinício e desktop/mobile. Os testes Base44 verificam criptografia/contrato com
+feed injetado; os testes IA continuam emuladores. Não comprovam Base44/IA/WhatsApp reais.
+Mantêm-se os avisos anteriores de useEffect, bundle acima de 500 kB e SQLite experimental.
+
+Ollama não está no PATH e o serviço local não respondeu ao probe. Zero inferências
+reais. A verificação independente regista modelo/duração/contrato quando possível,
+sem promover emulador ou configuração a prova real. Chromium 154.0.8037.57 está
+instalado; sandbox com WhatsApp, QR digitalizado, conta e entrega reais continuam
+sem validação. Não houve download de modelos ou instalação de API paga.
+
+Documentação: [Conversion Engine](AGEXA_CONVERSION.md),
+[Base44 e permissões](AGEXA_BASE44.md), [checklist IA/WhatsApp](AGEXA_VALIDATION.md).
+Novo comando: `AGEXA_CHROMIUM_PATH=/usr/bin/chromium npm run test:agexa:conversion:e2e`.
+O smoke continua `npm run test:smoke` com standalone na porta 3100.
+
+O lockfile e a licença originais da fase anterior são preservados. `install_script`
+continua Node 22/npm ci/build com download Puppeteer desativado. O `start_skill`
+é atualizado. Rascunho guardado/push não publicam o ambiente; rever/guardar nas
+definições e publicar pelo produto. Restauração numa nova tarefa não foi validada.
+
+Resultado operacional da Fase 6: comparação de todas as tabelas anteriores aprovada
+após migração para v5, antes da configuração auditada do URL. Smoke HTTP/WebSocket
+e rejeição de acesso não autenticado ao Conversion Engine aprovados. URL informado
+pelo CEO guardado na base de conhecimento partilhada com oferta inativa; verificação
+independente regista indisponibilidade, sem criar uma tarefa de inferência fictícia.
+As cinco regressões Chromium passaram. Nenhum cadastro/teste/recibo fictício foi
+inserido no diretório operacional.

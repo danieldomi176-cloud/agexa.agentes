@@ -337,7 +337,7 @@ describe('Messaging backend — SIMULATED provider only', () => {
     expect(engine.messaging.snapshot().connection.status).toBe('disconnected');
     expect(engine.messaging.store.detail(c.id).messages).toHaveLength(2);
   });
-  it('adds schema v4 without changing any pre-existing table or identifier', () => {
+  it('migrates schema v3 to the current schema without changing earlier data or identifiers', () => {
     engine.close();
     let db = new DatabaseSync(path.join(root, 'sales.sqlite'));
     db.exec('PRAGMA foreign_keys=OFF');
@@ -364,7 +364,7 @@ describe('Messaging backend — SIMULATED provider only', () => {
     engine.close();
     db = new DatabaseSync(path.join(root, 'sales.sqlite'));
     expect(fingerprint()).toBe(before);
-    expect(db.prepare('PRAGMA user_version').get()?.user_version).toBe(4);
+    expect(db.prepare('PRAGMA user_version').get()?.user_version).toBe(5);
     db.close();
     engine = new SalesEngine(root);
   });

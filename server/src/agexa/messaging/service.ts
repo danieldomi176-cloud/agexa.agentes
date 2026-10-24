@@ -30,6 +30,14 @@ export interface MessagingHost {
   suspended: () => boolean;
   changed: () => void;
   cancel: (conversationId?: string) => void;
+  prepareInvitation?: (id: string, body: string) => string;
+  allowedInvitationUrl?: (id: string, body: string) => string | null;
+  invitationDraft?: (draft: MessagingDraft) => void;
+  invitationConfirmed?: (
+    draftId: string,
+    deliveryId: string,
+    origin?: 'provider' | 'manual',
+  ) => void;
 }
 type Config = {
   provider: MessagingProviderId;
@@ -450,7 +458,14 @@ export class MessagingService {
   private content(body: string, kind: MessagingDraft['kind'], id: string): void {
     if (!body.trim() || body.length > 6000)
       throw new CrmError('Mensagem deve conter 1–6000 caracteres');
-    const knowledge = this.host.knowledge();
+    const baseKnowledge = this.host.knowledge();
+    const knowledge =
+      kind === 'invitation'
+        ? {
+            ...baseKnowledge,
+            signupUrl: this.host.allowedInvitationUrl?.(id, body) ?? baseKnowledge.signupUrl,
+          }
+        : baseKnowledge;
     try {
       validateOperationalResult(
         { summary: 'Rascunho interno', draft: body, observations: [], nextActions: [] },
@@ -482,7 +497,14 @@ export class MessagingService {
     const c = this.store.conversation(id);
     if (c.state === 'opted_out') throw new CrmError('Cliente pediu não contacto');
     this.content(body, kind, id);
-    const d = this.store.addDraft(id, body, 'ceo', 'manual', kind);
+    const d = this.store.atomic(() => {
+      const prepared =
+        kind === 'invitation' ? (this.host.prepareInvitation?.(id, body) ?? body) : body;
+      this.content(prepared, kind, id);
+      const d = this.store.addDraft(id, prepared, 'ceo', 'manual', kind);
+      if (kind === 'invitation') this.host.invitationDraft?.(d);
+      return d;
+    });
     this.changed();
     return d;
   }
@@ -641,7 +663,7 @@ export class MessagingService {
       this.store.assign(String(d.conversationId), 'ceo', reason, 'reconciliation');
     });
   }
-  private confirm(id: string): void {
+  private confirm(id: string, proofOrigin: 'provider' | 'manual' = 'provider'): void {
     const delivery = this.store.db.prepare('SELECT * FROM messaging_deliveries WHERE id=?').get(id);
     if (!delivery || delivery.status === 'confirmed' || delivery.status === 'not_sent') return;
     this.store.atomic(() => {
@@ -666,6 +688,7 @@ export class MessagingService {
       if (draft.kind !== 'invitation' && c.state === 'reconciliation')
         this.store.assign(c.id, 'ceo', 'Envio confirmado após reconciliação; atendimento humano.');
       if (draft.kind === 'invitation') {
+        this.host.invitationConfirmed?.(draft.id, id, proofOrigin);
         this.store.assign(c.id, 'ceo', 'Link confirmado: respostas dos agentes bloqueadas.');
         this.host.cancel(c.id);
         if (c.companyId) {
@@ -699,7 +722,7 @@ export class MessagingService {
       throw new CrmError('Aguardar término da tentativa');
     this.store.atomic(() => {
       this.store.audit('delivery_reconciled', `${outcome}: ${evidence}`, String(d.conversationId));
-      if (outcome === 'confirmed') this.confirm(id);
+      if (outcome === 'confirmed') this.confirm(id, 'manual');
       else {
         this.store.db
           .prepare("UPDATE messaging_deliveries SET status='not_sent',updatedAt=? WHERE id=?")
@@ -796,7 +819,9 @@ export class MessagingService {
       if (task.kind === 'ai_request' && !/assistente virtual/i.test(body))
         body = 'Sou o assistente virtual do Agexa. ' + body;
       this.content(body, kind, c.id);
-      this.store.addDraft(
+      if (kind === 'invitation') body = this.host.prepareInvitation?.(c.id, body) ?? body;
+      this.content(body, kind, c.id);
+      const draft = this.store.addDraft(
         c.id,
         body,
         task.employeeId,
@@ -805,6 +830,7 @@ export class MessagingService {
         task.id,
         meta.sourceMessageId,
       );
+      if (kind === 'invitation') this.host.invitationDraft?.(draft);
     }
     this.store.audit(
       'agent_completed',

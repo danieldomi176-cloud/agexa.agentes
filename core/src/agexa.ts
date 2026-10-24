@@ -1,3 +1,4 @@
+import type { ConversionSnapshot } from './conversion.js';
 import type { CrmSnapshot } from './crm.js';
 import type { IntelligenceSnapshot } from './intelligence.js';
 import type { MessagingSnapshot } from './messaging.js';
@@ -33,7 +34,8 @@ export type TaskKind =
   | 'crm_report'
   | 'crm_plan'
   | 'crm_summary'
-  | 'messaging_work';
+  | 'messaging_work'
+  | 'conversion_report';
 export type TaskStatus =
   'queued' | 'running' | 'awaiting_approval' | 'blocked' | 'completed' | 'error' | 'cancelled';
 export type EmployeeStatus =
@@ -84,6 +86,7 @@ export interface SalesEvent {
   detail: string;
 }
 export interface SalesSnapshot {
+  conversion?: ConversionSnapshot;
   messaging?: MessagingSnapshot;
   crm?: CrmSnapshot;
   intelligence?: IntelligenceSnapshot;

@@ -32,14 +32,16 @@ export function CrmPanel({
   tab,
   act,
   ready,
+  initialCompanyId = '',
 }: {
   office: SalesOffice;
   tab: CrmTab;
   act: Action;
   ready: boolean;
+  initialCompanyId?: string;
 }) {
   const crm = office.snapshot?.crm;
-  const [selected, setSelected] = useState('');
+  const [selected, setSelected] = useState(initialCompanyId);
   const [detail, setDetail] = useState<CompanyDetail | null>(null);
   const [error, setError] = useState('');
   const [items, setItems] = useState<Company[]>([]);

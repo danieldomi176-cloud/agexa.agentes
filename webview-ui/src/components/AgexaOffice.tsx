@@ -6,6 +6,7 @@ import App from '../App.js';
 import type { SalesOffice } from '../hooks/useSalesOffice.js';
 import { useSalesOffice } from '../hooks/useSalesOffice.js';
 import { AgexaHeader } from './AgexaHeader.js';
+import { ConversionPanel } from './ConversionPanel.js';
 import type { CrmTab } from './CrmPanel.js';
 import { CrmPanel } from './CrmPanel.js';
 import { IntelligencePanel } from './IntelligencePanel.js';
@@ -153,8 +154,18 @@ function SalesPanel({
   const snapshot = office.snapshot!;
   const employee = snapshot.employees.find((e) => e.id === selected)!;
   const [tab, setTab] = useState<
-    'team' | 'tasks' | 'events' | 'intelligence' | 'nexus' | 'knowledge' | 'messaging' | CrmTab
+    | 'team'
+    | 'tasks'
+    | 'events'
+    | 'intelligence'
+    | 'nexus'
+    | 'knowledge'
+    | 'conversion'
+    | 'messaging'
+    | CrmTab
   >('team');
+  const [conversionCompany, setConversionCompany] = useState('');
+  const [conversionConversation, setConversionConversation] = useState('');
   const [kind, setKind] = useState<TaskKind>('prepare_brief');
   const [objective, setObjective] = useState('');
   const [context, setContext] = useState('{}');
@@ -172,6 +183,7 @@ function SalesPanel({
     'reports',
     'commercial',
     'messaging',
+    'conversion',
   ].includes(tab);
   const ready = office.connection === 'connected' && !busy;
   const act = (route: string, body: unknown, done?: () => void): void => {
@@ -225,6 +237,7 @@ function SalesPanel({
             ['reports', 'Relatórios'],
             ['commercial', 'Comercial'],
             ['messaging', 'WhatsApp Center'],
+            ['conversion', 'Conversões'],
           ] as const
         ).map(([value, label]) => (
           <button key={value} aria-pressed={tab === value} onClick={() => setTab(value)}>
@@ -495,9 +508,37 @@ function SalesPanel({
       {(tab === 'intelligence' || tab === 'nexus' || tab === 'knowledge') && (
         <IntelligencePanel office={office} tab={tab} act={act} ready={ready} />
       )}
-      {tab === 'messaging' && <MessagingPanel office={office} act={act} ready={ready} />}
-      {commercialTab && tab !== 'messaging' && (
-        <CrmPanel office={office} tab={tab as CrmTab} act={act} ready={ready} />
+      {tab === 'messaging' && (
+        <MessagingPanel
+          office={office}
+          act={act}
+          ready={ready}
+          initialConversationId={conversionConversation}
+        />
+      )}
+      {tab === 'conversion' && (
+        <ConversionPanel
+          office={office}
+          act={act}
+          ready={ready}
+          openCompany={(id) => {
+            setConversionCompany(id);
+            setTab('crm');
+          }}
+          openConversation={(id) => {
+            setConversionConversation(id);
+            setTab('messaging');
+          }}
+        />
+      )}
+      {commercialTab && tab !== 'messaging' && tab !== 'conversion' && (
+        <CrmPanel
+          office={office}
+          tab={tab as CrmTab}
+          act={act}
+          ready={ready}
+          initialCompanyId={conversionCompany}
+        />
       )}
     </aside>
   );

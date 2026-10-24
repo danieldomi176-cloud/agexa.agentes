@@ -21,6 +21,8 @@ import type {
   SalesWorkflow,
 } from '../../../core/src/intelligence.js';
 import { PLAN_ORDER } from '../../../core/src/intelligence.js';
+import type { AgexaBase44Connector } from './conversion/connector.js';
+import { ConversionService } from './conversion/service.js';
 import {
   crmInput,
   draftKind,
@@ -65,6 +67,7 @@ export class SalesEngine extends EventEmitter {
   private readonly memory: CommercialMemory;
   readonly crm: CrmStore;
   readonly messaging: MessagingService;
+  readonly conversion: ConversionService;
   private readonly inference: InferenceAdapter;
   private healthTimer: ReturnType<typeof setInterval> | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -76,6 +79,7 @@ export class SalesEngine extends EventEmitter {
     readonly directory: string,
     inference?: InferenceAdapter,
     messagingProvider?: MessagingProvider,
+    conversionConnector?: AgexaBase44Connector,
   ) {
     super();
     fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
@@ -116,8 +120,20 @@ export class SalesEngine extends EventEmitter {
           suspended: () => this.suspended,
           changed: () => this.changed(),
           cancel: (id) => this.cancelMessagingTasks(id),
+          prepareInvitation: (id, body) => this.conversion.prepareLink(id, body),
+          allowedInvitationUrl: (id, body) => this.conversion.allowedUrl(id, body),
+          invitationDraft: (draft) => this.conversion.invitationDraft(draft),
+          invitationConfirmed: (draftId, deliveryId, origin) =>
+            this.conversion.invitationConfirmed(draftId, deliveryId, origin),
         },
         messagingProvider,
+      );
+      this.conversion = new ConversionService(
+        this.db,
+        this.crm,
+        () => this.memory.knowledge(),
+        () => this.changed(),
+        conversionConnector,
       );
       for (const employee of EMPLOYEES)
         this.db.prepare('INSERT OR IGNORE INTO employees(id) VALUES (?)').run(employee.id);
@@ -256,6 +272,7 @@ export class SalesEngine extends EventEmitter {
       version: 1,
       crm: this.crm.snapshot(),
       messaging: this.messaging.snapshot(),
+      conversion: this.conversion.snapshot(),
       suspended: this.suspended,
       ...(this.inference instanceof OllamaInferenceAdapter
         ? {
@@ -287,7 +304,12 @@ export class SalesEngine extends EventEmitter {
   }
 
   create(input: CreateSalesTask): SalesTask {
-    if (input.input?.crm !== undefined || input.input?.messaging !== undefined)
+    if (
+      input.input?.crm !== undefined ||
+      input.input?.messaging !== undefined ||
+      input.input?.conversionValidation !== undefined ||
+      input.input?.conversionReview !== undefined
+    )
       throw new SalesError('Metadados CRM reservados às ferramentas comerciais autorizadas', 400);
     this.validate(input);
     if (
@@ -320,6 +342,7 @@ export class SalesEngine extends EventEmitter {
         'crm_plan',
         'crm_summary',
         'messaging_work',
+        'conversion_report',
       ].includes(input.kind)
     )
       throw new SalesError('Operação não permitida', 400);
@@ -470,6 +493,54 @@ export class SalesEngine extends EventEmitter {
     return result;
   }
 
+  conversionReview(employeeId: EmployeeId, useAI: boolean): SalesTask {
+    if (!['nexus', 'sophia', 'orion'].includes(employeeId))
+      throw new SalesError('Revisão pertence a Nexus, Sophia ou Orion', 400);
+    if (this.suspended) throw new SalesError('Operações suspensas');
+    const t = this.transaction(() =>
+      this.commercialTask({
+        employeeId,
+        kind: useAI ? 'ai_request' : 'conversion_report',
+        objective:
+          'Analisar conversões e testes apenas internamente; sem contactar clientes nem alterar factos',
+        input: { authorized: true, conversionReview: true },
+      }),
+    );
+    this.changed();
+    return t;
+  }
+  validateInference(): SalesTask {
+    if (!this.inference.connected) {
+      this.conversion.validation(
+        null,
+        'unavailable',
+        'unavailable',
+        'Ollama/modelo indisponível; nenhuma inferência realizada.',
+      );
+      this.changed();
+      throw new SalesError('Ollama real indisponível; escolher serviço/modelo na Central IA');
+    }
+    const task = this.transaction(() =>
+      this.commercialTask({
+        employeeId: 'nexus',
+        kind: 'ai_request',
+        objective:
+          'Verificação controlada: explicar ao CEO os próximos passos comerciais do Agexa sem inventar funcionalidades ou contactar clientes',
+        input: { authorized: true, conversionValidation: true },
+      }),
+    );
+    this.conversion.validation(
+      task.id,
+      this.inference instanceof OllamaInferenceAdapter &&
+        this.inference.status.executionMode === 'test'
+        ? 'simulated'
+        : 'pending',
+      'running',
+      'Aguardar resposta do modelo e validação do contrato.',
+    );
+    this.changed();
+    return task;
+  }
   cancelMessagingTasks(conversationId?: string): void {
     for (const row of this.db
       .prepare(
@@ -1260,6 +1331,7 @@ export class SalesEngine extends EventEmitter {
       input.messagingContext = this.messaging.workContext(
         String((task.input.messaging as { conversationId: string }).conversationId),
       );
+    if (task.input.conversionReview) input.conversionMetrics = this.conversion.store.metrics();
     const crm = crmInput(task);
     if (crm.companyId) input.crmCompany = modelCompany(this.crm.company(crm.companyId));
     if (crm.orderId && task.stage === 'summary')
@@ -1356,11 +1428,17 @@ export class SalesEngine extends EventEmitter {
         });
       else {
         const operation =
-          task.kind === 'messaging_work'
-            ? this.messaging.operation(task)
-            : task.kind.startsWith('crm_')
-              ? this.commercialOperation(task, signal)
-              : this.structuredOperation(task);
+          task.kind === 'conversion_report'
+            ? {
+                summary: 'Revisão determinística de conversão; sem contacto nem inferência.',
+                metrics: this.conversion.store.metrics(),
+                inference: false,
+              }
+            : task.kind === 'messaging_work'
+              ? this.messaging.operation(task)
+              : task.kind.startsWith('crm_')
+                ? this.commercialOperation(task, signal)
+                : this.structuredOperation(task);
         result = operation instanceof Promise ? await operation : operation;
       }
       if (!signal.aborted && !this.closed)
@@ -1405,6 +1483,7 @@ export class SalesEngine extends EventEmitter {
         );
       this.commercialCompleted(task, result, error);
       this.messaging.completed(task, result, error);
+      this.conversion.completeValidation(task, result, error);
       if (!error && typeof result?.summary === 'string')
         this.memory.add('summary', result.summary.slice(0, 2000), task.employeeId, task.id);
       if (task.workflowId) {
@@ -1506,6 +1585,7 @@ export class SalesEngine extends EventEmitter {
     });
     this.closed = true;
     this.messaging.close();
+    this.conversion.close();
     this.db.close();
     fs.rmSync(this.lock, { force: true });
     this.removeAllListeners();

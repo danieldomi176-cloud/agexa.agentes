@@ -11,6 +11,7 @@ import {
   isAllowedWebSocketOrigin,
   standaloneHandshakeVerdict,
 } from '../wsAuth.js';
+import { registerConversionRoutes } from './conversion/routes.js';
 import { CrmError } from './crm/error.js';
 import { registerCrmRoutes } from './crm/routes.js';
 import { SalesEngine, SalesError } from './engine.js';
@@ -29,7 +30,7 @@ export async function registerSalesRoutes(
 ): Promise<void> {
   const { engine, token, allowedHosts } = options;
   app.get('/api/agexa/enabled', async (_request, reply) =>
-    reply.header('Cache-Control', 'no-store').send({ enabled: true, phase: 5 }),
+    reply.header('Cache-Control', 'no-store').send({ enabled: true, phase: 6 }),
   );
   await app.register(
     async (api) => {
@@ -65,6 +66,7 @@ export async function registerSalesRoutes(
       registerIntelligenceRoutes(api, engine);
       registerCrmRoutes(api, engine);
       registerMessagingRoutes(api, engine);
+      registerConversionRoutes(api, engine);
       api.get('/events', { websocket: true }, (socket) => {
         const send = (): void => {
           if (socket.readyState === 1) socket.send(JSON.stringify(engine.snapshot()));

@@ -12,6 +12,7 @@ export const PIPELINE = [
   ['ceo', 'ENTREGUE AO CEO'],
   ['account', 'CONTA CRIADA'],
   ['trial', 'TESTE GRATUITO ATIVO'],
+  ['trial_ended', 'TESTE TERMINADO'],
   ['paying', 'CLIENTE PAGANTE'],
   ['lost', 'NÃO CONVERTIDO'],
 ] as const;
@@ -194,7 +195,7 @@ export interface CrmAnalytics {
   stages: Record<string, number>;
   sources: { name: string; count: number }[];
   agents: { employeeId: string; completed: number; errors: number }[];
-  provenance: 'Dados registados; conversões apenas com evidência independente confirmada pelo CEO';
+  provenance: 'Confirmações auditadas do CEO ou integração autenticada; consultar origem no Conversion Engine';
 }
 export interface CrmSnapshot {
   companies: Company[];

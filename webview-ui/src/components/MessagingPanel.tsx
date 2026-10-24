@@ -25,10 +25,12 @@ export function MessagingPanel({
   office,
   act,
   ready,
+  initialConversationId = '',
 }: {
   office: SalesOffice;
   act: Act;
   ready: boolean;
+  initialConversationId?: string;
 }) {
   const snapshot = office.snapshot?.messaging;
   const [items, setItems] = useState<MessagingConversation[]>([]),
@@ -36,7 +38,7 @@ export function MessagingPanel({
     [page, setPage] = useState(1);
   const [search, setSearch] = useState(''),
     [filter, setFilter] = useState(''),
-    [selected, setSelected] = useState(''),
+    [selected, setSelected] = useState(initialConversationId),
     [messagePage, setMessagePage] = useState(1);
   const [detail, setDetail] = useState<Detail | null>(null),
     [error, setError] = useState('');
