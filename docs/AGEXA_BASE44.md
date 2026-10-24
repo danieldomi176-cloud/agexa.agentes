@@ -132,3 +132,85 @@ Para ativar rastreio por parâmetro, o cadastro Agexa tem de capturar a referên
 opaca e associá-la ao ID da conta. Desativado por omissão; não presumimos que o
 Agexa atual reconhece `agexa_ref`. Sem suporte, conservar link original e usar
 associação manual por evidência. Consultar [Conversion Engine](AGEXA_CONVERSION.md).
+
+## Fase 7 — passos para o editor autorizado do CEO
+
+O CEO confirmou acesso ao editor, mas não forneceu ID interno, plano, esquema,
+endpoint ou credenciais ao Office. A aplicação e documentação continuam recusadas
+pelo proxy desta nuvem (CONNECT HTTP 403). Acesso do CEO não significa acesso deste
+processo: **nada foi publicado nem alterado na Base44**.
+
+Executar no editor apenas quando o proprietário autorizar as alterações:
+
+1. Abrir a aplicação Agexa correta no editor. Copiar o **App ID interno** da
+   configuração/projeto para uma nota de operação sem segredos. Não usar o slug
+   `agexa-flix`. Confirmar plano, acesso a código/backend, funções e eventual custo
+   em Billing. Parar se exigir upgrade pago não autorizado.
+2. Identificar o fluxo real de cadastro, entidade da conta, regras de entitlement
+   do teste, evento de expiração/cancelamento e processador de pagamentos. Anotar
+   nomes/campos efetivos e os pontos onde a operação já está confirmada. Não criar
+   outra conta/CRM ou alterar a aplicação para caber em entidades inventadas.
+3. Criar a entidade privada **OfficeConversionEvent**, com campo `payload` do tipo
+   objeto. O artefacto `integrations/base44/OfficeConversionEvent.schema.json`
+   descreve os campos do contrato; **não é um ficheiro de configuração nativa ou
+   RLS verificado para importação automática no editor**. Adaptar à UI/esquema real.
+   Rever permissões explicitamente: nenhum visitante ou utilizador comum pode
+   listar, ler, criar, alterar ou eliminar estes registos. Só backend autorizado
+   pode escrever/ler. O nome oculto na interface não implementa segurança.
+4. Implementar publicação append-only dos factos mínimos **no backend**, depois
+   de cada transação real confirmada. Usar ID estável de evento e conta opaca;
+   retries conservam o mesmo ID. Restringir escrita a código de confiança, sem
+   aceitar `verified`, preço, datas ou recibo declarados pelo browser/IA.
+
+| Facto | Origem autorizada necessária |
+| --- | --- |
+| `account_created` | Conta persistida e confirmada, não clique no link |
+| `trial_started` | Entitlement real criado, datas efetivas de início/fim |
+| `trial_extended` | Extensão efetivamente aplicada com novas datas |
+| `trial_ended` | Expiração confirmada pelo domínio/backend, não só relógio do Office |
+| `trial_cancelled` | Cancelamento efetivamente confirmado |
+| `payment_confirmed` | Recibo liquidado verificado independentemente pelo processador/backend, ID permanente, montante positivo em unidades mínimas e moeda |
+
+5. Para atribuição automática, capturar `agexa_ref` no cadastro real e associá-lo
+   à conta. Tratar como identificador comercial não confiável: não concede
+   autorização, desconto, período de teste nem permissão administrativa. Se não
+   implementar isso, manter referências desativadas no Office e associação manual.
+6. Gerar segredo aleatório forte fora do frontend e guardá-lo no mecanismo de
+   segredos do backend. Configurar `AGEXA_BASE44_APP_ID` e
+   `AGEXA_BASE44_EVENT_SECRET` no backend Base44. Provisionar a mesma chave bruta
+   no backend Office por canal seguro; **não enviar pelo chat ou formulário**.
+7. Criar função backend usando `agexaConversionFeed.ts` e `feedHandler.ts` existentes.
+   Confirmar importação SDK 0.8.57, WebCrypto, paginação estável e permissões no
+   runtime real. O service role só existe dentro desse backend autorizado e é
+   usado após HMAC validado. Se a plataforma exigir autenticação adicional antes
+   da função, configurar um caminho autorizado; não tornar entidades públicas.
+8. Rever e publicar só com autorização do proprietário. Copiar o URL HTTPS
+   efetivamente atribuído à função; **não deduzir o endpoint a partir do domínio**.
+9. No Office → Conversões → Integração Base44, preencher App ID, endpoint real,
+   evidência de permissão e modo por pedido. Só confirmar captura de referência
+   depois de a capacidade estar implementada/testada. Segredo nunca entra na UI.
+10. Sincronizar explicitamente. Nesta nuvem o transporte com proxy não garante DNS
+    fixado e é recusado; validar numa rede/máquina autorizada ou preparar transporte
+    compatível com essa política, sem remover proxy/TLS/defesas SSRF.
+
+### Aceitação real no editor e no Office
+
+Num ambiente de teste autorizado e separado dos clientes, registar data, IDs
+opacos e evidência privada para cada passo:
+
+- Uma chamada sem assinatura, com assinatura errada, timestamp antigo, app diferente
+  ou nonce incompatível é recusada. Utilizador comum não pode ler/escrever o feed.
+- Um cadastro de teste autorizado gera exatamente um `account_created` estável;
+  sincronização recebe/associa a empresa exata e repetir não duplica a conta.
+- O teste de sete dias real tem datas/funcionalidades observadas e persistidas.
+  Verificar também fim/cancelamento sem criar vendas nem cobrar indevidamente.
+- Se for necessário testar pagamento, usar **sandbox oficial do processador**
+  autorizado e rótulo explícito de teste. Nunca marcar uma cobrança fictícia como
+  receita real. Um checkout aberto ou promessa do utilizador não confirma pagamento.
+- Confirmar reinício, histórico, cursor, associação pendente e deduplicação do
+  recibo. Guardar resultados sem chaves, PII, sessão ou dados de cartão no Git.
+
+Só depois preencher a prova da oferta em **Prontidão operacional**, incluindo
+cadastro/sete dias, quando começa, o que termina, pagamento e funções disponíveis.
+Guardar Conhecimento inicialmente com oferta inativa, registar prova e então ativar.
+O Office não assume que as regras atuais do Agexa correspondem a sete dias.

@@ -3,6 +3,20 @@
 Estas capturas foram produzidas durante os testes em dados isolados.
 A captura da Fase 3 utiliza uma API Ollama simulada e não comprova inferência com um modelo real.
 
+## Fase 7 — prontidão e jornada controlada
+
+**Cenário fictício e isolado.** O backend/fila/SQLite e a interface funcionam,
+mas as nove inferências usam emulador identificado e o canal WhatsApp é Mock.
+As animações acompanhadas no teste correspondem a tarefas da fila, não a trabalho
+com clientes. Não houve modelo verdadeiro, autenticação WhatsApp ou Base44 real.
+O painel mantém o piloto bloqueado e mostra as evidências separadas.
+
+![Fase 7: prontidão, bloqueios e origem simulada das inferências](fase-7-prontidao-teste.png)
+
+![Fase 7: prontidão no telemóvel com dados isolados](fase-7-mobile-teste.png)
+
+![Fase 7: os oito funcionários no escritório original preservado](fase-7-escritorio-teste.png)
+
 ## Fase 6 — conversões e Free Trial Tracker
 
 Backend/SQLite reais em diretório temporário, **dados comerciais fictícios**.

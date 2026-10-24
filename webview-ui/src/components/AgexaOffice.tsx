@@ -11,6 +11,7 @@ import type { CrmTab } from './CrmPanel.js';
 import { CrmPanel } from './CrmPanel.js';
 import { IntelligencePanel } from './IntelligencePanel.js';
 import { MessagingPanel } from './MessagingPanel.js';
+import { ReadinessPanel } from './ReadinessPanel.js';
 
 const statuses: Record<string, string> = {
   paused: 'Pausado',
@@ -162,6 +163,7 @@ function SalesPanel({
     | 'knowledge'
     | 'conversion'
     | 'messaging'
+    | 'readiness'
     | CrmTab
   >('team');
   const [conversionCompany, setConversionCompany] = useState('');
@@ -184,6 +186,7 @@ function SalesPanel({
     'commercial',
     'messaging',
     'conversion',
+    'readiness',
   ].includes(tab);
   const ready = office.connection === 'connected' && !busy;
   const act = (route: string, body: unknown, done?: () => void): void => {
@@ -238,6 +241,7 @@ function SalesPanel({
             ['commercial', 'Comercial'],
             ['messaging', 'WhatsApp Center'],
             ['conversion', 'Conversões'],
+            ['readiness', 'Prontidão operacional'],
           ] as const
         ).map(([value, label]) => (
           <button key={value} aria-pressed={tab === value} onClick={() => setTab(value)}>
@@ -531,7 +535,8 @@ function SalesPanel({
           }}
         />
       )}
-      {commercialTab && tab !== 'messaging' && tab !== 'conversion' && (
+      {tab === 'readiness' && <ReadinessPanel office={office} act={act} ready={ready} />}
+      {commercialTab && tab !== 'messaging' && tab !== 'conversion' && tab !== 'readiness' && (
         <CrmPanel
           office={office}
           tab={tab as CrmTab}

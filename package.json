@@ -127,7 +127,9 @@
     "test:agexa:intelligence:e2e": "node --import tsx scripts/agexa-intelligence-e2e.mjs",
     "test:agexa:crm:e2e": "node scripts/agexa-crm-e2e.mjs",
     "test:agexa:messaging:e2e": "node scripts/agexa-messaging-e2e.mjs",
-    "test:agexa:conversion:e2e": "node scripts/agexa-conversion-e2e.mjs"
+    "test:agexa:conversion:e2e": "node scripts/agexa-conversion-e2e.mjs",
+    "test:agexa:operational:e2e": "node --import tsx scripts/agexa-conversion-e2e.mjs --operational",
+    "test:agexa:restore": "node scripts/agexa-restore-e2e.mjs"
   },
   "devDependencies": {
     "@asyncapi/modelina": "^5.10.1",

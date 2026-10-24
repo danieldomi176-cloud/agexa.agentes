@@ -1012,3 +1012,70 @@ pelo CEO guardado na base de conhecimento partilhada com oferta inativa; verific
 independente regista indisponibilidade, sem criar uma tarefa de inferência fictícia.
 As cinco regressões Chromium passaram. Nenhum cadastro/teste/recibo fictício foi
 inserido no diretório operacional.
+
+## Fase 7 — prontidão, instalação limpa e piloto controlado
+
+Continuação de `agexa/phase-6` em `9f5f947b86d894155f5bf53dedde2b81bb49eff0`,
+na branch `agexa/phase-7`. Mantêm-se as seis fases, arquitetura Pixel Agents,
+editor, oito funcionários, CRM, inbox, consentimentos, confirmações e transferência.
+Não houve force-push, substituição de sessões ou seed no diretório operacional.
+
+O CEO confirmou que ainda não tem Ollama/modelo nem número WhatsApp secundário,
+mas tem acesso ao editor Base44. A implementação prossegue sem depender desses
+componentes. Modelo real e contas externas não foram simulados como disponíveis.
+
+O novo painel privado **Prontidão operacional** agrega quinze verificações com
+evidência/origem/data/bloqueio/próxima ação. Os botões verificam o serviço existente,
+criam tarefas internas dos funcionários ou backup SQLite consistente. A oferta
+de sete dias exige prova auditada do CEO correspondente à configuração atual;
+alterações invalidam essa prova e os rascunhos antigos continuam sujeitos às
+proteções existentes. Simulações não se tornam prova operacional.
+
+Schema permanece v5; novas evidências/manifesto de backup/histórico usam `settings`
+e auditoria `events`. Antes de modificar código foram criados backup privado
+consistente e fingerprints de todas as tabelas anteriores. Licença e lockfile
+foram preservados; não há nova dependência ou serviço pago.
+
+Inventário da nuvem: Debian 13 x64, quota 4 CPUs, limite 32 GiB RAM, cerca de 29 GiB
+livres, sem GPU exposta. Não é inventário do computador pessoal. Ollama ausente e
+porta 11434 com `ECONNREFUSED`: **zero inferências reais**, sem downloads de modelo.
+Chromium com sandbox foi testado em `about:blank` e abortou com helper SUID inválido.
+Não se contornou sandbox/rede/TLS. Base44 continua bloqueada pelo proxy CONNECT 403;
+nenhuma função foi publicada, conta criada ou oferta verificada na aplicação real.
+
+A jornada Fase 7 usa empresa fictícia e emulador identificado: plano/etapas,
+aprovação, nove tarefas, oito animações ligadas à fila, convite Mock, transferência
+CEO/bloqueio dos agentes, tracker, notificações, relatório e interface desktop/mobile.
+Não cria vendas no banco operacional. Testes reais externos permanecem independentes.
+
+Instalação limpa com Node 22/npm ci/build e recuperação de backup passaram em
+diretórios novos **da mesma máquina**, com dados de teste e comparação de todas
+as tabelas. Inclui autenticação, assets/WebSocket, CRM e conversões. Uma máquina
+independente continua pendente, com procedimento reproduzível documentado.
+
+Comandos novos:
+
+```bash
+node scripts/agexa-host-check.mjs
+AGEXA_CHROMIUM_PATH=/usr/bin/chromium npm run test:agexa:operational:e2e
+AGEXA_CHROMIUM_PATH=/usr/bin/chromium npm run test:agexa:restore
+```
+
+Build/tipos/lint, **1.118 testes** (196 interface + 915 servidor + 7 contratos),
+AsyncAPI, regressões Chromium Fases 2–6 e cenário Fase 7. Os 1.105 testes anteriores
+foram mantidos; 13 novos. Permanecem avisos anteriores de useEffect, bundle e SQLite
+experimental. VS Code/Claude E2E não executado. O relatório distingue provas locais,
+emuladores, declarações humanas e integrações reais ainda pendentes.
+
+Consultar [relatório Fase 7](AGEXA_PHASE7_REPORT.md),
+[prontidão](AGEXA_READINESS.md), [instalação e Ollama](AGEXA_LOCAL_SETUP.md),
+[configuração no editor Base44](AGEXA_BASE44.md) e
+[WhatsApp supervisionado](AGEXA_VALIDATION.md). Não publicar o backend administrativo
+na internet nem usar o número principal nesta etapa. `install_script` mantém-se;
+`start_skill` e commit do ambiente são atualizados em rascunho para revisão/publicação.
+
+Resultado na pasta operacional: hashes de todas as tabelas anteriores iguais após
+arranque Fase 7, smoke HTTP/WebSocket aprovado e prontidão sem token recusada.
+Depois registaram-se apenas verificações técnicas/indisponibilidade e backup
+consistente privado, com hash/permissões aprovados. Sem fixtures ou tarefas de
+inferência fictícias; URL preservado, oferta inativa e piloto bloqueado.

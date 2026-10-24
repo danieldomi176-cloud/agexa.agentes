@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -9,6 +10,11 @@ import type {
 } from '../../../core/src/intelligence.js';
 import { EMPTY_KNOWLEDGE } from '../../../core/src/intelligence.js';
 import { systemInstructions, validateOperationalResult } from './prompts.js';
+
+export const inferenceConfigurationDigest = (config: IntelligenceConfig): string =>
+  createHash('sha256')
+    .update(JSON.stringify({ baseUrl: config.baseUrl, model: config.model }))
+    .digest('hex');
 
 export function validateIntelligenceConfig(value: IntelligenceConfig): void {
   const url = new URL(value.baseUrl);
@@ -173,7 +179,10 @@ export class OllamaInferenceAdapter implements InferenceAdapter {
         reachable: false,
         connected: false,
         checkedAt: new Date().toISOString(),
-        error: error instanceof Error ? error.message : 'Ollama indisponível',
+        error:
+          error instanceof Error
+            ? `${error.message}${typeof (error.cause as { code?: unknown } | undefined)?.code === 'string' ? ` (${(error.cause as { code: string }).code})` : ''}`
+            : 'Ollama indisponível',
       };
     }
     return this.status;
@@ -254,6 +263,7 @@ export class OllamaInferenceAdapter implements InferenceAdapter {
         mode: 'ollama',
         inference: true,
         executionMode: this.mode,
+        configurationDigest: inferenceConfigurationDigest(config),
         model: config.model,
         durationMs: Math.round(performance.now() - started),
         delivery: 'internal_only',

@@ -333,6 +333,10 @@ function Knowledge({
           />
           Confirmo que o teste de 7 dias está ativo na plataforma.
         </label>
+        <p className="agexa-subtle">
+          Ativar exige evidência atual em Prontidão operacional. Guardar primeiro URL e
+          funcionalidades com a oferta inativa; alterações exigem nova confirmação.
+        </p>
         {(
           [
             ['confirmedFeatures', 'Funcionalidades confirmadas'],

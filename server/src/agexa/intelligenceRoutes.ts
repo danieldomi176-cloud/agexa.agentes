@@ -95,6 +95,7 @@ export function registerIntelligenceRoutes(api: FastifyInstance, engine: SalesEn
       } catch (error) {
         throw new SalesError(error instanceof Error ? error.message : 'Conhecimento inválido', 400);
       }
+      engine.operational.assertOffer(request.body);
       engine.saveKnowledge(request.body);
       return engine.snapshot();
     },

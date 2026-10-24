@@ -1,5 +1,6 @@
 /** All business records in this browser scenario are explicitly simulated fixtures. */
 import assert from 'node:assert/strict';
+import { confirmFixtureOffer } from './helpers/offer-fixture.mjs';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import * as fs from 'node:fs';
@@ -8,6 +9,12 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 
 import { chromium } from 'playwright';
+
+const operational = process.argv.includes('--operational');
+const emulator = operational
+  ? await (await import('../server/__tests__/helpers/mockOllama.ts')).mockOllama()
+  : null;
+if (emulator) emulator.control.delayMs = 200;
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'agexa-conversion-browser-'));
 const probe = net.createServer();
@@ -28,7 +35,7 @@ async function start() {
         ...process.env,
         AGEXA_DATA_DIR: root,
         AGEXA_MESSAGING_TEST_MODE: '1',
-        AGEXA_INFERENCE_TEST_MODE: '0',
+        AGEXA_INFERENCE_TEST_MODE: operational ? '1' : '0',
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     },
@@ -120,7 +127,7 @@ try {
     origin: 'Fixture',
     evidence: 'Opt-in fictício',
   });
-  await api('knowledge', {
+  await confirmFixtureOffer(api, {
     signupUrl: 'https://cadastro.example.org/',
     trialAvailable: true,
     trialDays: 7,
@@ -147,6 +154,98 @@ try {
     body: 'Sou o assistente virtual do Agexa. Teste 7 dias: https://cadastro.example.org/',
     kind: 'invitation',
   });
+  if (operational) {
+    // Actual queue/dependencies and UI activity, but a clearly identified TEST model.
+    const initial = await api('state');
+    await api('intelligence/config', {
+      ...initial.intelligence.config,
+      baseUrl: emulator.url,
+      model: 'agexa-test:tiny',
+    });
+    browser = await chromium.launch(
+      process.env.AGEXA_CHROMIUM_PATH
+        ? { executablePath: process.env.AGEXA_CHROMIUM_PATH, args: ['--no-sandbox'] }
+        : {},
+    );
+    const observing = await browser.newPage({ viewport: { width: 1550, height: 1100 } });
+    await observing.addInitScript(() => {
+      window.__PIXEL_AGENTS_E2E = true;
+      window.__observedCommercialActivity = [];
+      setInterval(() => {
+        for (const c of window.__pixelAgentsTestHooks?.getCharacters?.() ?? [])
+          if (
+            c.isActive &&
+            c.commercialStatus &&
+            !window.__observedCommercialActivity.includes(c.agentName)
+          )
+            window.__observedCommercialActivity.push(c.agentName);
+      }, 20);
+    });
+    await observing.goto(base);
+    await observing.getByLabel('Token administrativo').fill(token);
+    await observing.getByRole('button', { name: 'Entrar', exact: true }).click();
+    const workflow = await api('commands', {
+      goal: 'SIMULAÇÃO: preparar estratégia comercial de uma barbearia fictícia na Beira, sem contactar clientes.',
+      input: {
+        authorized: true,
+        company: {
+          id: company.id,
+          name: company.name,
+          sector: company.sector,
+          city: company.city,
+          sourceId: source.id,
+          recordMode: 'simulated',
+        },
+        question: 'Como organizar marcações?',
+        objection: 'Já uso WhatsApp.',
+      },
+    });
+    await until(
+      (s) => s.intelligence.workflows.find((w) => w.id === workflow.id)?.status === 'proposed',
+    );
+    await api(`workflows/${workflow.id}/approve`, {});
+    const completed = await until(
+      (s) => s.intelligence.workflows.find((w) => w.id === workflow.id)?.status === 'completed',
+    );
+    const tasks = completed.tasks.filter((t) => t.workflowId === workflow.id);
+    assert.equal(tasks.length, 9);
+    assert.ok(tasks.every((t) => t.status === 'completed' && t.result.executionMode === 'test'));
+    assert.equal(new Set(tasks.map((t) => t.employeeId)).size, 8);
+    assert.ok(tasks.filter((t) => t.stage === 'work').every((t) => t.dependencyIds.length > 0));
+    const names = await observing.evaluate(() => window.__observedCommercialActivity);
+    for (const name of ['NEXUS', 'HUNTER', 'ATLAS', 'MAYA', 'LUNA', 'VICTOR', 'SOPHIA', 'ORION'])
+      assert.ok(names.includes(name), `Missing task-driven animation ${name}`);
+    await observing.getByRole('button', { name: 'Prontidão operacional', exact: true }).click();
+    await observing
+      .getByRole('heading', { name: 'AGEXA OPERATIONAL READINESS', exact: true })
+      .waitFor();
+    await observing.getByRole('button', { name: 'Verificar prontidão', exact: true }).click();
+    await until(() => true);
+    const report = await api('readiness');
+    assert.equal(report.pilotReady, false);
+    assert.ok(report.employees.every((e) => e.mode === 'simulated'));
+    if (process.env.AGEXA_SCREENSHOT_DIR)
+      await observing.screenshot({
+        path: path.join(process.env.AGEXA_SCREENSHOT_DIR, 'phase7-readiness-test-desktop.png'),
+      });
+    await observing.setViewportSize({ width: 390, height: 844 });
+    assert.equal(
+      await observing.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+      false,
+    );
+    if (process.env.AGEXA_SCREENSHOT_DIR)
+      await observing.screenshot({
+        path: path.join(process.env.AGEXA_SCREENSHOT_DIR, 'phase7-readiness-test-mobile.png'),
+      });
+    await browser.close();
+    browser = null;
+    // Later unavailable-model check remains independent from the successful emulator contract.
+    await api('intelligence/config', {
+      ...initial.intelligence.config,
+      baseUrl: emulator.url,
+      model: '',
+    });
+  }
   await api(`messaging/drafts/${draft.id}/review`, { decision: 'approved' });
   await api(`messaging/drafts/${draft.id}/send`, { confirmed: true });
   const before = await api('state');
@@ -241,6 +340,20 @@ try {
   assert.equal(after.conversion.trials[0].status, 'converted');
   assert.equal((await api(`messaging/conversations/${conversation.id}`)).messages.length, 2);
   assert.equal((await api(`messaging/conversations/${conversation.id}`)).conversation.owner, 'ceo');
+  if (operational) {
+    const blocked = await fetch(
+      `${base}/api/agexa/messaging/conversations/${conversation.id}/work`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employeeId: 'luna', useAI: false, team: false }),
+      },
+    );
+    assert.equal(blocked.status, 400, 'CEO ownership must block employee participation');
+    assert.match((await blocked.json()).error, /bloqueado para agentes/);
+    const review = await api('conversion/review', { employeeId: 'orion', useAI: false });
+    await until((s) => s.tasks.find((t) => t.id === review.id)?.status === 'completed');
+  }
   // Additional explicitly simulated trial fixtures for meaningful tracker screenshots.
   await api('crm/import', {
     sourceId: source.id,
@@ -355,6 +468,10 @@ try {
   console.log(
     'PASS — FICTIONAL CONVERSIONS ONLY: real backend/SQLite, mock handoff, audited manual facts, exact dates, simulated receipt, independent unavailable-IA check, persistent notices/restart, protected human control and desktop/mobile. No real Base44, inference or WhatsApp authentication.',
   );
+  if (operational)
+    console.log(
+      'PASS — PHASE 7 SIMULATED JOURNEY: nine dependent emulator tasks, all eight characters observed working during actual backend tasks, approved mock invitation, CEO ownership/block, simulated facts/tracker/Orion report and readiness desktop/mobile. Zero real model or external messages.',
+    );
 } catch (error) {
   const page = browser?.contexts()[0]?.pages()[0];
   if (page && process.env.AGEXA_SCREENSHOT_DIR)
@@ -365,5 +482,6 @@ try {
 } finally {
   await browser?.close();
   await stop();
+  await emulator?.close();
   fs.rmSync(root, { recursive: true, force: true });
 }

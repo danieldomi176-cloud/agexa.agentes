@@ -1,5 +1,20 @@
 # Validação independente — IA real e WhatsApp supervisionado
 
+Preparação detalhada e recursos locais: [AGEXA_LOCAL_SETUP.md](AGEXA_LOCAL_SETUP.md).
+Painel Fase 7: [AGEXA_READINESS.md](AGEXA_READINESS.md).
+O CEO informou que ainda não tem Ollama/modelo nem número WhatsApp secundário.
+Tem acesso ao editor Base44; a configuração necessária está em
+[AGEXA_BASE44.md](AGEXA_BASE44.md). Nenhuma dessas disponibilidades foi presumida.
+
+Na Fase 7 foi executado arranque Chromium com sandbox e página `about:blank`,
+sem WhatsApp: **falhou**. O processo abortou porque o helper SUID
+`/usr/lib/chromium/chrome-sandbox` não está configurado corretamente
+(propriedade root/modo 4755 exigidos pelo binário). Não se alteraram permissões
+de sistema nem se desligou o sandbox para ligar uma conta. Também surgiram erros
+Crashpad, mas o abort fatal identificado é o sandbox. A versão do Chromium e os
+testes UI com fixture não ultrapassam este bloqueio. Preparar navegador/runtime
+com sandbox suportado numa máquina de confiança, sem enfraquecer proteções.
+
 ## Evidência desta instância
 
 - Ollama não foi encontrado no PATH. `127.0.0.1:11434/api/tags` não respondeu por

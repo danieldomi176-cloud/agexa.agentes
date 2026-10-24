@@ -61,6 +61,9 @@ Para convite Sophia:
 
 1. Confirmar em **Comercial/Conhecimento** o URL HTTPS oficial, oferta ativa e sete
    dias. Reutiliza a configuração existente; não há uma segunda base de conhecimento.
+   Na Fase 7, guardar primeiro com oferta inativa e registar a verificação do
+   cadastro/oferta em **Prontidão operacional**; só depois ativar. Alterações ao
+   conhecimento exigem nova prova correspondente.
 2. Na conversa, selecionar a mensagem recebida que comprova interesse e registar
    evidência/confirmar a declaração do cliente.
 3. Registar também aceitação expressa de receber o link, ligada a uma mensagem

@@ -37,6 +37,7 @@ import type { MessagingProvider } from './messaging/provider.js';
 import { MessagingService } from './messaging/service.js';
 import { OllamaInferenceAdapter } from './ollama.js';
 import { validateOperationalResult } from './prompts.js';
+import { OperationalReadiness } from './readiness.js';
 
 export class SalesError extends Error {
   constructor(
@@ -68,6 +69,7 @@ export class SalesEngine extends EventEmitter {
   readonly crm: CrmStore;
   readonly messaging: MessagingService;
   readonly conversion: ConversionService;
+  readonly operational: OperationalReadiness;
   private readonly inference: InferenceAdapter;
   private healthTimer: ReturnType<typeof setInterval> | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -135,6 +137,14 @@ export class SalesEngine extends EventEmitter {
         () => this.changed(),
         conversionConnector,
       );
+      this.operational = new OperationalReadiness(this.db, directory, {
+        knowledge: () => this.memory.knowledge(),
+        config: () => this.memory.config(),
+        ollama: () =>
+          this.inference instanceof OllamaInferenceAdapter ? this.inference.status : null,
+        messaging: () => this.messaging.snapshot().connection,
+        suspended: () => this.suspended,
+      });
       for (const employee of EMPLOYEES)
         this.db.prepare('INSERT OR IGNORE INTO employees(id) VALUES (?)').run(employee.id);
       // Crash recovery never replays an uncertain inference automatically.
@@ -509,7 +519,10 @@ export class SalesEngine extends EventEmitter {
     this.changed();
     return t;
   }
-  validateInference(): SalesTask {
+  validateInference(employeeId: EmployeeId = 'nexus'): SalesTask {
+    if (!EMPLOYEES.some((e) => e.id === employeeId))
+      throw new SalesError('Funcionário inválido', 400);
+    if (this.suspended) throw new SalesError('Operações suspensas');
     if (!this.inference.connected) {
       this.conversion.validation(
         null,
@@ -522,10 +535,10 @@ export class SalesEngine extends EventEmitter {
     }
     const task = this.transaction(() =>
       this.commercialTask({
-        employeeId: 'nexus',
+        employeeId,
         kind: 'ai_request',
         objective:
-          'Verificação controlada: explicar ao CEO os próximos passos comerciais do Agexa sem inventar funcionalidades ou contactar clientes',
+          'Prepara uma estratégia comercial para vender o Agexa a uma barbearia fictícia na Beira, utilizando apenas funcionalidades verificadas e a tua função na equipa. Sem contacto externo. Oferta não confirmada exige checklist interno.',
         input: { authorized: true, conversionValidation: true },
       }),
     );

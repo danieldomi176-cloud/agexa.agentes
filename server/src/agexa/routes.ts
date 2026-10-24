@@ -17,6 +17,7 @@ import { registerCrmRoutes } from './crm/routes.js';
 import { SalesEngine, SalesError } from './engine.js';
 import { registerIntelligenceRoutes } from './intelligenceRoutes.js';
 import { registerMessagingRoutes } from './messaging/routes.js';
+import { registerReadinessRoutes } from './readinessRoutes.js';
 
 export async function registerSalesRoutes(
   app: FastifyInstance,
@@ -30,7 +31,7 @@ export async function registerSalesRoutes(
 ): Promise<void> {
   const { engine, token, allowedHosts } = options;
   app.get('/api/agexa/enabled', async (_request, reply) =>
-    reply.header('Cache-Control', 'no-store').send({ enabled: true, phase: 6 }),
+    reply.header('Cache-Control', 'no-store').send({ enabled: true, phase: 7 }),
   );
   await app.register(
     async (api) => {
@@ -67,6 +68,7 @@ export async function registerSalesRoutes(
       registerCrmRoutes(api, engine);
       registerMessagingRoutes(api, engine);
       registerConversionRoutes(api, engine);
+      registerReadinessRoutes(api, engine);
       api.get('/events', { websocket: true }, (socket) => {
         const send = (): void => {
           if (socket.readyState === 1) socket.send(JSON.stringify(engine.snapshot()));

@@ -1,5 +1,6 @@
 /** All business records in this browser scenario are explicitly simulated fixtures. */
 import assert from 'node:assert/strict';
+import { confirmFixtureOffer } from './helpers/offer-fixture.mjs';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import * as fs from 'node:fs';
@@ -120,7 +121,7 @@ try {
     origin: 'Fixture de opt-in',
     evidence: 'Consentimento fictício exclusivo de testes',
   });
-  await api('knowledge', {
+  await confirmFixtureOffer(api, {
     signupUrl: 'https://cadastro.example.org/',
     trialAvailable: true,
     trialDays: 7,

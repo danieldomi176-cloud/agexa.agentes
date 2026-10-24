@@ -1,5 +1,6 @@
 /** All business records in this browser scenario are explicitly simulated fixtures. */
 import assert from 'node:assert/strict';
+import { confirmFixtureOffer } from './helpers/offer-fixture.mjs';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import * as fs from 'node:fs';
@@ -23,7 +24,10 @@ async function start() {
   server = spawn(
     process.execPath,
     ['dist/cli.js', '--agexa', '--host', '127.0.0.1', '--port', String(port), '--no-terminal'],
-    { env: { ...process.env, AGEXA_DATA_DIR: root }, stdio: ['ignore', 'pipe', 'pipe'] },
+    {
+      env: { ...process.env, AGEXA_DATA_DIR: root, AGEXA_MESSAGING_TEST_MODE: '1' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
   );
   await new Promise((resolve, reject) => {
     let output = '';
@@ -127,7 +131,7 @@ try {
   assert.equal(imported.crm.batches[0].result.duplicates, 1);
   const company = imported.crm.companies.find((c) => c.name === 'Barbearia TESTE A');
   assert.equal(company.recordMode, 'simulated');
-  await api('knowledge', {
+  await confirmFixtureOffer(api, {
     signupUrl: 'https://cadastro.example.org/',
     trialAvailable: true,
     trialDays: 7,

@@ -7,6 +7,12 @@ CRM e inbox. A Fase 6 acrescenta o Conversion Engine: factos auditados de cadast
 teste e pagamento, referências opacas, Free Trial Tracker, acompanhamento do CEO e
 relatórios separados por origem.
 
+A Fase 7 acrescenta **Prontidão operacional**, evidências separadas de integrações,
+backup consistente, confirmação documentada da oferta e testes de instalação limpa
+e recuperação isolada. O piloto permanece bloqueado enquanto faltam IA e canais
+validados. Ver [estado da Fase 7](docs/AGEXA_PHASE7_REPORT.md) e
+[instalação local/Ollama](docs/AGEXA_LOCAL_SETUP.md).
+
 O percurso manual é funcional. O **conector Base44 e o modelo de Backend Function
 estão preparados, mas a integração real não foi autenticada nem validada**. O acesso
 a `agexa-flix.base44.app` e à documentação web foi bloqueado por esta rede; não se

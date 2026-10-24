@@ -551,6 +551,15 @@
   padding: 10px 0;
   border-bottom: 1px solid #3b304b;
 }
+
+.agexa-readiness {
+  overflow-wrap: anywhere;
+}
+.agexa-readiness .agexa-event strong,
+.agexa-readiness .agexa-event small {
+  display: block;
+  margin-bottom: 5px;
+}
 .agexa-panel pre {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
