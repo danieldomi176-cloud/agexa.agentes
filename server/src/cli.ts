@@ -8,10 +8,12 @@
  * Each connecting WebSocket client receives the full state on webviewReady.
  */
 
+import * as fs from 'fs';
 import * as path from 'path';
 
 import { AgentRuntime } from './agentRuntime.js';
 import { AgentStateStore } from './agentStateStore.js';
+import { SalesEngine } from './agexa/engine.js';
 import {
   buildAssetCache,
   loadAllCharacters,
@@ -31,6 +33,7 @@ import {
   TERMINAL_DISABLED_BY_FLAG_REASON,
   WILDCARD_HOSTNAMES,
 } from './constants.js';
+import { getDataDirectory } from './dataDirectory.js';
 import { FileStateAdapter } from './fileStateAdapter.js';
 import { claudeProvider, copyHookScript, hookProviderById } from './providers/index.js';
 import { PixelAgentsServer } from './server.js';
@@ -40,6 +43,7 @@ import { isLoopbackHost, normalizeHostname } from './wsAuth.js';
 // ── Argument parsing ──────────────────────────────────────────
 
 export interface CliArgs {
+  agexa?: boolean;
   /** Unset -> ephemeral (OS-assigned) port, so multiple standalone instances
    *  can run at once without a collision. --port picks a fixed one. */
   port?: number;
@@ -68,7 +72,9 @@ export function parseArgs(argv: string[]): CliArgs {
     rotateToken: false,
   };
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--port' || argv[i] === '-p') {
+    if (argv[i] === '--agexa') {
+      args.agexa = true;
+    } else if (argv[i] === '--port' || argv[i] === '-p') {
       const raw = argv[i + 1];
       if (raw === undefined) {
         throw new CliArgsError(
@@ -106,6 +112,7 @@ export function parseArgs(argv: string[]): CliArgs {
       console.log(`Usage: pixel-agents [options]
 
 Options:
+  --agexa              Enable the private Agexa commercial office
   --port, -p <number>   Port to listen on (default: OS-assigned ephemeral port)
   --host <string>       Host to bind to (default: 127.0.0.1)
   --allowed-host <name> Also accept the tokened URL at this host name, e.g. a
@@ -225,6 +232,14 @@ async function main(): Promise<void> {
     `[Pixel Agents] Assets loaded: ${charCount} characters, ${petCount} pets, ${furnitureCount} furniture items`,
   );
 
+  const salesLayout = args.agexa
+    ? (JSON.parse(
+        fs.readFileSync(path.join(distRoot, 'assets', 'agexa-layout.json'), 'utf8'),
+      ) as Record<string, unknown>)
+    : null;
+  if (salesLayout) assetCache.defaultLayout = salesLayout;
+  const salesEngine = args.agexa ? new SalesEngine(getDataDirectory()) : undefined;
+
   // ── Store + adapter (shared settings + standalone-scoped agents/seats) ──
   const store = new AgentStateStore();
   const adapter = new FileStateAdapter({ namespace: 'standalone' });
@@ -331,6 +346,8 @@ async function main(): Promise<void> {
     const config = await server.start({
       store,
       runtime,
+      salesEngine,
+      salesLayout,
       embedded: false,
       host: args.host,
       port: args.port,
@@ -343,6 +360,7 @@ async function main(): Promise<void> {
       rotateToken: args.rotateToken,
     });
     currentConfig = { port: config.port, token: config.token };
+    salesEngine?.startWorker();
     if (args.rotateToken) {
       console.log(
         '[Pixel Agents] Server token rotated: URLs carrying the old token no longer grant access. Open the new URL below on each device.',
@@ -428,6 +446,7 @@ async function main(): Promise<void> {
       // leave a child that ignores SIGHUP orphaned on a dead server.
       await ptyManager.disposeAll();
       runtime.dispose();
+      salesEngine?.close();
       server.stop();
       process.exit(0);
     }

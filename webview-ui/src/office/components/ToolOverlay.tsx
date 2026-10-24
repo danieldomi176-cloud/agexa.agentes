@@ -149,7 +149,12 @@ export function ToolOverlay({
   const hoveredId = officeState.hoveredAgentId;
 
   // All character IDs
-  const allIds = [...agents, ...subagentCharacters.map((s) => s.id)];
+  const commercialIds = Array.from(officeState.characters.values())
+    .filter((character) => character.commercialStatus)
+    .map((character) => character.id);
+  const allIds = [
+    ...new Set([...agents, ...subagentCharacters.map((s) => s.id), ...commercialIds]),
+  ];
 
   return (
     <>
@@ -199,7 +204,7 @@ export function ToolOverlay({
 
         // Only show the label for hovered or selected agents (unless
         // always-show is on) — the bubble renders regardless.
-        if (!alwaysShowOverlay && !isSelected && !isHovered) {
+        if (!ch.commercialStatus && !alwaysShowOverlay && !isSelected && !isHovered) {
           return bubbleNode && <Fragment key={id}>{bubbleNode}</Fragment>;
         }
 
@@ -233,7 +238,9 @@ export function ToolOverlay({
         const hasWaitingBubble = ch.bubbleType === 'waiting';
         const subHasPermission = isSub && ch.bubbleType === 'permission';
         let activityText: string;
-        if (hasWaitingBubble && ch.waitingAwaitingInput) {
+        if (ch.commercialStatus) {
+          activityText = ch.commercialTask ?? ch.commercialStatus;
+        } else if (hasWaitingBubble && ch.waitingAwaitingInput) {
           // Idle, waiting on the user -> dedicated label. A finished turn (Stop)
           // shows only the checkmark and falls through to the normal idle text.
           activityText = WAITING_INPUT_ACTIVITY_TEXT;
@@ -327,13 +334,13 @@ export function ToolOverlay({
                   >
                     {activityText}
                   </span>
-                  {ch.directoryName && (
+                  {ch.directoryName && (!ch.commercialStatus || isSelected || isHovered) && (
                     <span className="text-2xs leading-none overflow-hidden text-ellipsis block">
-                      {ch.directoryName}
+                      {ch.commercialRole ?? ch.directoryName}
                     </span>
                   )}
                 </div>
-                {isSelected && !isSub && (
+                {isSelected && !isSub && !ch.commercialStatus && (
                   <Button
                     variant="ghost"
                     size="icon"

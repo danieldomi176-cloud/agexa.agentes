@@ -1189,7 +1189,7 @@ export class OfficeState {
   > {
     const seats: Record<number, { palette: number; hueShift: number; seatId: string | null }> = {};
     for (const ch of this.characters.values()) {
-      if (ch.isSubagent) continue;
+      if (ch.isSubagent || ch.commercialStatus) continue;
       seats[ch.id] = { palette: ch.palette, hueShift: ch.hueShift, seatId: ch.seatId };
     }
     return seats;

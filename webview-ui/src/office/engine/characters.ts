@@ -97,6 +97,24 @@ export function updateCharacter(
   tileMap: TileTypeVal[][],
   blockedTiles: Set<string>,
 ): void {
+  // A configured or paused employee is not performing work. Keep its own seat
+  // without the original coding-agent idle wandering or typing animation.
+  if (ch.commercialStatus && !ch.isActive) {
+    const seat = ch.seatId ? seats.get(ch.seatId) : undefined;
+    if (seat) {
+      ch.tileCol = seat.seatCol;
+      ch.tileRow = seat.seatRow;
+      ch.x = seat.seatCol * TILE_SIZE + TILE_SIZE / 2;
+      ch.y = seat.seatRow * TILE_SIZE + TILE_SIZE / 2;
+      ch.dir = seat.facingDir;
+    }
+    ch.state = CharacterState.TYPE;
+    ch.frame = 0;
+    ch.frameTimer = 0;
+    ch.path = [];
+    ch.bubbleType = null;
+    return;
+  }
   ch.frameTimer += dt;
 
   switch (ch.state) {

@@ -11,6 +11,10 @@ assert.equal(page.status, 200);
 assert.match(await page.text(), /<title>AGEXA AI OFFICE<\/title>/);
 const manifest = await (await fetch(`${base}/manifest.webmanifest`)).json();
 assert.equal(manifest.name, 'AGEXA AI OFFICE');
+const commercial = await fetch(`${base}/api/agexa/enabled`);
+assert.equal(commercial.status, 200);
+assert.equal((await commercial.json()).enabled, true);
+assert.equal((await fetch(`${base}/api/agexa/state`)).status, 401);
 await new Promise((resolve, reject) => {
   const ws = new WebSocket(`${base.replace('http:', 'ws:')}/ws`);
   const received = new Set();
@@ -42,4 +46,6 @@ await new Promise((resolve, reject) => {
     }
   });
 });
-console.log('PASS: HTTP health, Agexa page/manifest and real WebSocket office/assets bootstrap');
+console.log(
+  'PASS: HTTP health, private commercial API, Agexa page/manifest and real WebSocket office/assets bootstrap',
+);

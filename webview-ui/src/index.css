@@ -405,3 +405,235 @@
     display: none;
   }
 }
+
+/* CEO controls use readable system typography while the original pixel canvas stays intact. */
+.agexa-workspace {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+.agexa-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.agexa-header button,
+.agexa-panel button,
+.agexa-login button {
+  cursor: pointer;
+  border: 1px solid #6c4c97;
+  border-radius: 5px;
+  color: #fff;
+  background: #322144;
+  padding: 7px 10px;
+  font: inherit;
+}
+.agexa-panel button:disabled,
+.agexa-login button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.agexa-panel button[aria-pressed='true'] {
+  border-color: #bc95ff;
+  background: #482b68;
+}
+.agexa-panel {
+  width: 370px;
+  min-width: 320px;
+  max-width: 100%;
+  flex-shrink: 0;
+  overflow: auto;
+  padding: 16px;
+  box-sizing: border-box;
+  background: #17131f;
+  border-left: 1px solid #6c4c97;
+  color: #f6f3ff;
+  font:
+    13px/1.5 system-ui,
+    sans-serif;
+}
+.agexa-panel h2 {
+  font-size: 18px;
+  margin: 0;
+}
+.agexa-panel h3 {
+  font-size: 14px;
+  margin: 12px 0 6px;
+}
+.agexa-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.agexa-notice {
+  padding: 8px;
+  border: 1px solid #756238;
+  color: #ffdda4;
+  border-radius: 5px;
+}
+.agexa-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 12px 0;
+}
+.agexa-team-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.agexa-team-grid button {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  min-width: 0;
+}
+.agexa-team-grid small {
+  color: #c2bbd0;
+  font-size: 11px;
+}
+.agexa-status {
+  font-size: 11px;
+  color: #c4bbd2;
+}
+.agexa-status.working {
+  color: #8be9ba;
+}
+.agexa-status.error {
+  color: #ffa6a6;
+}
+.agexa-panel p {
+  margin: 6px 0;
+}
+.agexa-subtle {
+  color: #aaa1ba;
+  font-size: 11px;
+}
+.agexa-panel label,
+.agexa-login label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 9px 0;
+}
+.agexa-panel input,
+.agexa-panel textarea,
+.agexa-panel select,
+.agexa-login input {
+  font: inherit;
+  color: #f6f3ff;
+  background: #211a2c;
+  border: 1px solid #60526d;
+  border-radius: 4px;
+  padding: 7px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.agexa-panel textarea {
+  min-height: 65px;
+  resize: vertical;
+}
+.agexa-panel .agexa-check {
+  flex-direction: row;
+  align-items: center;
+}
+.agexa-panel .agexa-check input {
+  width: auto;
+}
+.agexa-panel .agexa-danger {
+  background: #652b40;
+  border-color: #a45771;
+}
+.agexa-employee-details,
+.agexa-task,
+.agexa-event {
+  padding: 10px 0;
+  border-bottom: 1px solid #3b304b;
+}
+.agexa-panel pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 11px/1.5 monospace;
+  padding: 8px;
+  background: #211a2c;
+}
+.agexa-error {
+  color: #ffaaa5;
+  overflow-wrap: anywhere;
+}
+.agexa-transfer {
+  margin-top: 8px;
+}
+.agexa-panel details {
+  margin: 12px 0;
+}
+.agexa-panel summary {
+  cursor: pointer;
+  color: #ccb0ff;
+}
+.agexa-login {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  padding: 24px;
+  box-sizing: border-box;
+  background: #111018;
+  color: #e8e0f3;
+  text-align: center;
+  font:
+    15px/1.6 system-ui,
+    sans-serif;
+}
+.agexa-login h1 {
+  color: #b88cff;
+  font-size: 24px;
+}
+.agexa-login form {
+  width: 320px;
+  max-width: 100%;
+}
+.agexa-login p {
+  max-width: 520px;
+}
+.agexa-inference-note {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 70%;
+  padding: 4px 8px;
+  pointer-events: none;
+  background: #17131fcc;
+  color: #e3ca98;
+  border-radius: 4px;
+  font:
+    11px system-ui,
+    sans-serif;
+}
+@media (max-width: 760px) {
+  .agexa-panel {
+    position: absolute;
+    z-index: 50;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(370px, 100%);
+    min-width: 0;
+    box-shadow: -5px 0 20px #0009;
+  }
+  .agexa-header-actions {
+    gap: 5px;
+  }
+  .agexa-header-actions span {
+    display: none;
+  }
+}
+
+.agexa-header *,
+.agexa-panel *,
+.agexa-login * {
+  font-family: inherit;
+}

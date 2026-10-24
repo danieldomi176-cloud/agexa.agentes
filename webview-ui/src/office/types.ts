@@ -168,6 +168,9 @@ export interface OfficeLayout {
 }
 
 export interface Character {
+  commercialStatus?: string;
+  commercialTask?: string;
+  commercialRole?: string;
   id: number;
   state: CharacterState;
   dir: Direction;

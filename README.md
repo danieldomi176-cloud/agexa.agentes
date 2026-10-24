@@ -3,11 +3,14 @@
 **Organização que trabalha por ti.**
 
 Extensão do Pixel Agents para o futuro escritório comercial do Agexa.
-A Fase 1 preserva o Canvas 2D, editor, personagens, assets, Fastify e WebSockets
-originais e acrescenta a identidade Agexa e persistência configurável.
-**O motor comercial, os oito funcionários, Ollama, CRM e WhatsApp ainda não estão implementados.**
-O modo Vite utiliza dados simulados, identificados no cabeçalho. O standalone
-recebe o estado real do runtime original, que acompanha sessões de programação.
+A Fase 2 mantém o Canvas 2D, editor, personagens, assets, Fastify e WebSockets
+originais, acrescentando oito funcionários com lugares fixos, painel privado do CEO,
+fila SQLite, aprovações, pausa/suspensão e eventos em tempo real.
+**Os funcionários estão configurados; a inferência real com Ollama depende da Fase 3.**
+Briefings estruturados, qualificação por regras e relatórios de tarefas funcionam
+sem IA. Pedidos de IA ficam bloqueados de forma explícita. Não existe integração
+WhatsApp, pesquisa autónoma ou confirmação automática de conversões nesta fase.
+O modo Vite continua reservado a prototipagem com dados simulados identificados.
 
 Ver [instalação e plano técnico](docs/AGEXA.md) e
 [requisitos fornecidos pelo CEO](docs/AGEXA_REQUIREMENTS.md).

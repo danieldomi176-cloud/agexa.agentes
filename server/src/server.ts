@@ -5,6 +5,7 @@ import * as path from 'path';
 
 import type { AgentRuntime } from './agentRuntime.js';
 import type { AgentStateStore } from './agentStateStore.js';
+import type { SalesEngine } from './agexa/engine.js';
 import type {
   AssetCache,
   ReloadAssetsSideEffect,
@@ -58,6 +59,8 @@ export class PixelAgentsServer {
    * the multi-server registry), reuses its config without starting a new one.
    */
   async start(options?: {
+    salesEngine?: SalesEngine;
+    salesLayout?: Record<string, unknown> | null;
     store?: AgentStateStore;
     runtime?: AgentRuntime;
     embedded?: boolean;
@@ -81,6 +84,7 @@ export class PixelAgentsServer {
     const standalone: StandaloneAccess | undefined = embedded
       ? undefined
       : {
+          ...(options?.salesEngine ? { sales: true } : {}),
           terminal: options?.ptyManager?.enabled ?? false,
           host,
           allowedHosts: normalizedAllowedHosts(options?.allowedHosts ?? []),
@@ -128,6 +132,8 @@ export class PixelAgentsServer {
     const { app, port } = await createHttpServer({
       embedded,
       host,
+      salesEngine: options?.salesEngine,
+      salesLayout: options?.salesLayout,
       port: options?.port,
       token,
       store: store!,

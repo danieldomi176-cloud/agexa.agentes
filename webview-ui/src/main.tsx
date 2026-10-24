@@ -6,8 +6,7 @@ import '@xterm/xterm/css/xterm.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import App from './App.tsx';
-import { AgexaHeader } from './components/AgexaHeader.tsx';
+import { AgexaOffice } from './components/AgexaOffice.tsx';
 import { isBrowserRuntime } from './runtime';
 
 async function main() {
@@ -19,12 +18,7 @@ async function main() {
   }
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <div className="agexa-shell">
-        <AgexaHeader />
-        <main className="agexa-office" aria-label="Escritório virtual Agexa">
-          <App />
-        </main>
-      </div>
+      <AgexaOffice />
     </StrictMode>,
   );
 }

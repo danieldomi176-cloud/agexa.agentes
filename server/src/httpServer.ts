@@ -6,6 +6,8 @@ import Fastify from 'fastify';
 
 import type { AgentRuntime } from './agentRuntime.js';
 import type { AgentStateStore } from './agentStateStore.js';
+import type { SalesEngine } from './agexa/engine.js';
+import { registerSalesRoutes } from './agexa/routes.js';
 import type {
   AssetCache,
   ReloadAssetsSideEffect,
@@ -31,6 +33,8 @@ import {
 
 /** Options for creating the HTTP + WebSocket server. */
 export interface HttpServerOptions {
+  salesEngine?: SalesEngine;
+  salesLayout?: Record<string, unknown> | null;
   /** true = VS Code embedded mode (ephemeral port, no static, quiet logging) */
   embedded: boolean;
   /** Host to bind to. Default: '127.0.0.1' */
@@ -106,6 +110,18 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
   const host = options.host ?? '127.0.0.1';
   const allowedHostnames = privilegedHostnames(host, options.allowedHosts ?? []);
 
+  if (options.salesEngine) {
+    await registerSalesRoutes(app, {
+      engine: options.salesEngine,
+      token: options.token,
+      allowedHosts: allowedHostnames,
+      layout: options.salesLayout ?? null,
+      onLayout: (layout) => options.store.broadcast({ type: 'layoutLoaded', layout }),
+    });
+    app.addHook('onClose', () => {
+      options.salesEngine?.close();
+    });
+  }
   registerHealthRoute(app);
   registerHookRoute(app, options);
   registerWebSocketRoute(app, options, allowedHostnames);

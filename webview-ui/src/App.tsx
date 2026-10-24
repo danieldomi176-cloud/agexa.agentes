@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 
+import type { EmployeeId, SalesSnapshot } from '../../core/src/agexa.js';
+import { syncSalesCharacters } from './agexa/pixelBridge.js';
 import { toMajorMinor } from './changelogData.js';
 import { AgentCardBar } from './components/AgentCardBar.js';
 import { BottomToolbar } from './components/BottomToolbar.js';
@@ -60,7 +62,15 @@ function getOfficeState(): OfficeState {
   return officeStateRef.current;
 }
 
-function App() {
+function App({
+  commercial,
+  commercialLive = true,
+  onEmployeeSelect,
+}: {
+  commercial?: SalesSnapshot;
+  commercialLive?: boolean;
+  onEmployeeSelect?: (id: EmployeeId) => void;
+}) {
   // Browser runtime (dev or static dist): dispatch mock messages after the
   // useExtensionMessages listener has been registered.
   useEffect(() => {
@@ -123,6 +133,11 @@ function App() {
     terminalUnavailableReason,
     terminalAgentIds,
   } = useExtensionMessages(getOfficeState, editor.setLastSavedLayout, isEditDirty);
+
+  useEffect(() => {
+    if (commercial && layoutReady)
+      syncSalesCharacters(getOfficeState(), commercial, commercialLive);
+  }, [commercial, commercialLive, layoutReady]);
 
   // Show migration notice once layout reset is detected
   const [migrationNoticeDismissed, setMigrationNoticeDismissed] = useState(false);
@@ -229,7 +244,12 @@ function App() {
     installPending,
     onChoice: handleConsentChoice,
     onClose: handleIntroClose,
-  } = useIntroTour({ consentRequest, hooksInstalled, hooksStatusSeq, dismissConsentRequest });
+  } = useIntroTour({
+    consentRequest: commercial ? null : consentRequest,
+    hooksInstalled,
+    hooksStatusSeq,
+    dismissConsentRequest,
+  });
 
   // The Settings surface renders one provider today; its checkbox binds to
   // the Claude row of the per-provider install-state map.
@@ -336,6 +356,11 @@ function App() {
   const { showTerminal: showMobileTerminal } = mobileShell;
   const handleClick = useCallback(
     (agentId: number) => {
+      const employee = commercial?.employees.find((e) => e.characterId === agentId);
+      if (employee) {
+        onEmployeeSelect?.(employee.id);
+        return;
+      }
       // If clicked agent is a sub-agent, focus the parent's terminal instead
       const os = getOfficeState();
       const focusId = os.terminalOwnerOf(agentId);
@@ -353,7 +378,7 @@ function App() {
         if (isMobile) showMobileTerminal();
       }
     },
-    [terminalAgentIds, isMobile, revealTerminal, showMobileTerminal],
+    [terminalAgentIds, isMobile, revealTerminal, showMobileTerminal, commercial, onEmployeeSelect],
   );
 
   // Card click when there is no terminal pane to switch (VS Code, or a
