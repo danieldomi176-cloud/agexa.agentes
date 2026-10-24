@@ -72,12 +72,16 @@ export class ConversionService {
     const official = this.knowledge().signupUrl;
     if (found.length !== 1) return official;
     if (found[0] === official) return official;
+    const config = this.store.config();
+    if (!config.referenceSupported) return official;
     const r = this.store.db
       .prepare(
-        'SELECT trackedUrl FROM conversion_references WHERE conversationId=? AND trackedUrl=?',
+        'SELECT id,trackedUrl FROM conversion_references WHERE conversationId=? AND trackedUrl=? AND officialUrl=?',
       )
-      .get(conversationId, found[0]);
-    return r ? String(r.trackedUrl) : official;
+      .get(conversationId, found[0], official);
+    return r && new URL(found[0]).searchParams.get(config.referenceParameter) === String(r.id)
+      ? String(r.trackedUrl)
+      : official;
   }
   prepareLink(conversationId: string, body: string): string {
     const k = this.knowledge();

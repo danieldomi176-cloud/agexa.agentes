@@ -419,6 +419,21 @@ describe('Conversion ledger and manual fallback — fixtures only', () => {
     expect(() =>
       engine.messaging.draft(c.id, 'https://cadastro.example.org/?agexa_ref=forged', 'invitation'),
     ).toThrow(/URL/);
+    const config = engine.conversion.store.config();
+    engine.conversion.configure({ ...config, referenceSupported: false });
+    expect(() => engine.messaging.review(d.id, 'approved')).toThrow(/URL/);
+    engine.conversion.configure({ ...config, referenceParameter: 'new_ref' });
+    expect(() => engine.messaging.review(d.id, 'approved')).toThrow(/URL/);
+    engine.conversion.configure(config);
+    engine.saveKnowledge({
+      signupUrl: 'https://novo.example.org/',
+      trialAvailable: true,
+      trialDays: 7,
+      confirmedFeatures: [],
+      approvedPrices: [],
+      policies: [],
+    });
+    expect(() => engine.messaging.review(d.id, 'approved')).toThrow(/URL/);
   });
   it('does not infer signup from link preparation, sending or interest', async () => {
     const { c } = await invitation();

@@ -58,6 +58,9 @@ quando essa capacidade tiver sido implementada e confirmada na aplicação Agexa
 com ID interno e evidência. Então o backend acrescenta o parâmetro configurado
 (padrão `agexa_ref`) e regista o URL exato autorizado. O modelo não inventa referências.
 URLs de outra conversa, referências forjadas e URLs não aprovados são recusados.
+Alterar o URL oficial, desativar a captura de referências ou mudar o seu parâmetro
+invalida os rascunhos antigos que usam esses links. O histórico dos convites enviados
+e as referências para atribuição continuam preservados.
 
 O cadastro é atribuído automaticamente apenas por referência exata registada ou
 conta externa já associada. A associação manual continua identificada separadamente
