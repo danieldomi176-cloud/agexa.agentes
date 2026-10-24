@@ -1,5 +1,11 @@
 # Validação independente — IA real e WhatsApp supervisionado
 
+**Perfil atualizado: Chromebook com 2 GB.** Priorizar Gemini na nuvem com opção
+gratuita confirmada na conta, sem instalar Ollama no Chromebook. A validação de
+inferência aceita o fornecedor selecionado (`gemini` ou `ollama`); `test` continua
+simulado. Seguir [AGEXA_CHROMEBOOK.md](AGEXA_CHROMEBOOK.md). Não há chave ou
+inferência Gemini real validada nesta execução, nem ativação de faturação paga.
+
 Preparação detalhada e recursos locais: [AGEXA_LOCAL_SETUP.md](AGEXA_LOCAL_SETUP.md).
 Painel Fase 7: [AGEXA_READINESS.md](AGEXA_READINESS.md).
 O CEO informou que ainda não tem Ollama/modelo nem número WhatsApp secundário.

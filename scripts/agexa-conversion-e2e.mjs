@@ -11,6 +11,7 @@ import * as path from 'node:path';
 import { chromium } from 'playwright';
 
 const operational = process.argv.includes('--operational');
+const cloudSetup = process.argv.includes('--cloud-setup');
 const emulator = operational
   ? await (await import('../server/__tests__/helpers/mockOllama.ts')).mockOllama()
   : null;
@@ -89,6 +90,18 @@ async function until(predicate) {
 }
 try {
   await start();
+  if (cloudSetup) {
+    const s = await api('state');
+    await api('intelligence/config', {
+      ...s.intelligence.config,
+      provider: 'gemini',
+      baseUrl: 'https://generativelanguage.googleapis.com',
+      model: '',
+      cloudAuthorized: false,
+      freeTierConfirmed: false,
+      dailyRequestLimit: 20,
+    });
+  }
   await api('messaging/config', { provider: 'mock', confirmedExperimental: false });
   await api('messaging/connection', { action: 'connect', confirmedExperimental: false });
   await api('messaging/suspension', { suspended: false });
@@ -270,6 +283,67 @@ try {
     await page.getByRole('button', { name: 'Conversões', exact: true }).click();
   }
   await login();
+  if (cloudSetup) {
+    await page.getByRole('button', { name: 'Central IA', exact: true }).click();
+    await page
+      .getByLabel('Fornecedor de inteligência artificial', { exact: true })
+      .selectOption('gemini');
+    await page.getByText('Chave apenas no backend:', { exact: false }).waitFor();
+    assert.equal(await page.locator('input[type="password"]').count(), 0);
+    assert.ok(
+      (await page.getByLabel('Endpoint Gemini fixo', { exact: true }).getAttribute('readonly')) !==
+        null,
+    );
+    await page
+      .getByLabel('Limite diário interno de tentativas de geração', { exact: true })
+      .fill('9');
+    await page.getByRole('button', { name: 'Guardar configuração de IA', exact: true }).click();
+    const saved = await until((s) => s.intelligence.config.dailyRequestLimit === 9);
+    assert.equal(saved.intelligence.config.provider, 'gemini');
+    assert.equal(saved.intelligence.status.connected, false);
+    assert.equal(saved.intelligence.status.credentialConfigured, false);
+    assert.equal(saved.intelligence.cloudUsage.attempts, 0);
+    assert.equal((await api('readiness')).checks.find((c) => c.id === 'ollama').state, 'PENDENTE');
+    await page.locator('.agexa-panel').evaluate((node) => {
+      node.scrollTop = 0;
+    });
+    if (process.env.AGEXA_SCREENSHOT_DIR)
+      await page.screenshot({
+        path: path.join(process.env.AGEXA_SCREENSHOT_DIR, 'phase7-cloud-setup-desktop.png'),
+      });
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+      false,
+    );
+    await page.locator('.agexa-panel').evaluate((node) => {
+      node.scrollTop = 0;
+    });
+    if (process.env.AGEXA_SCREENSHOT_DIR)
+      await page.screenshot({
+        path: path.join(process.env.AGEXA_SCREENSHOT_DIR, 'phase7-cloud-setup-mobile.png'),
+      });
+    await page.setViewportSize({ width: 1550, height: 1100 });
+    await page.getByRole('button', { name: 'Modo leve', exact: true }).click();
+    assert.equal(await page.locator('canvas').count(), 0);
+    assert.equal(await page.locator('.agexa-light-office .agexa-team-grid button').count(), 8);
+    await page.reload();
+    await page.getByRole('button', { name: 'Mostrar escritório', exact: true }).waitFor();
+    assert.equal(await page.locator('canvas').count(), 0);
+    await page.getByRole('button', { name: 'Recolher painel', exact: true }).click();
+    if (process.env.AGEXA_SCREENSHOT_DIR)
+      await page.screenshot({
+        path: path.join(process.env.AGEXA_SCREENSHOT_DIR, 'phase7-light-mode.png'),
+      });
+    await page.getByRole('button', { name: 'Mostrar escritório', exact: true }).click();
+    await page.waitForFunction(
+      () =>
+        window.__pixelAgentsTestHooks?.getCharacters?.().filter((c) => c.commercialStatus)
+          .length === 8,
+    );
+    await page.getByRole('button', { name: 'Painel CEO', exact: true }).click();
+    await page.getByRole('button', { name: 'Conversões', exact: true }).click();
+  }
   await page
     .getByRole('heading', { name: 'AGEXA SALES CONVERSION DASHBOARD', exact: true })
     .waitFor();
@@ -471,6 +545,10 @@ try {
   if (operational)
     console.log(
       'PASS — PHASE 7 SIMULATED JOURNEY: nine dependent emulator tasks, all eight characters observed working during actual backend tasks, approved mock invitation, CEO ownership/block, simulated facts/tracker/Orion report and readiness desktop/mobile. Zero real model or external messages.',
+    );
+  if (cloudSetup)
+    console.log(
+      'PASS — CLOUD SETUP WITHOUT KEY/INFERENCE: fixed endpoint, no browser secret field, explicit provider/consent/free-tier controls, persistent budget, unavailable model and desktop/mobile. Conversion fixture path remains functional.',
     );
 } catch (error) {
   const page = browser?.contexts()[0]?.pages()[0];

@@ -254,25 +254,39 @@ export class OperationalReadiness {
       this.host.suspended() ? 'Operações suspensas pelo CEO.' : null,
     );
     const status = this.host.ollama();
-    const fresh = !!status?.checkedAt && Date.now() - Date.parse(status.checkedAt) < 20000;
+    const fresh =
+      !!status?.checkedAt &&
+      Date.now() - Date.parse(status.checkedAt) < (status.freshForMs ?? 20000);
     const simulated = status?.executionMode === 'test';
+    const cloud = this.host.config().provider === 'gemini';
+    const cloudNeedsSetup =
+      cloud &&
+      (!this.host.config().cloudAuthorized ||
+        !this.host.config().freeTierConfirmed ||
+        !status?.credentialConfigured);
     add(
       'ollama',
-      'Ollama',
-      fresh && status?.reachable && !simulated
-        ? 'VALIDADO'
-        : fresh && !status?.reachable
-          ? 'ERRO'
-          : 'PENDENTE',
+      cloud ? 'IA na nuvem · Gemini' : 'Ollama',
+      cloudNeedsSetup
+        ? 'PENDENTE'
+        : fresh && status?.reachable && !simulated
+          ? 'VALIDADO'
+          : fresh && !status?.reachable
+            ? 'ERRO'
+            : 'PENDENTE',
       status?.reachable
-        ? 'GET /api/tags respondeu; isto não comprova inferência.'
+        ? cloud
+          ? 'Lista de modelos Gemini respondeu; não comprova inferência nem elegibilidade gratuita.'
+          : 'GET /api/tags respondeu; isto não comprova inferência.'
         : (status?.error ?? 'Adaptador real não configurado.'),
       simulated
         ? 'Serviço de teste: não comprova IA real.'
         : fresh && status?.reachable
           ? null
           : 'Serviço ainda não verificado ou inacessível.',
-      'Configurar serviço privado existente e verificar; sem downloads automáticos.',
+      cloud
+        ? 'Configurar chave no backend, confirmar nível gratuito e dados autorizados, selecionar modelo elegível e validar uma tarefa.'
+        : 'Ollama é opcional; Chromebook pode usar IA na nuvem sem instalar modelo local.',
       simulated ? 'simulated' : 'technical',
       status?.checkedAt ?? null,
     );
@@ -288,11 +302,11 @@ export class OperationalReadiness {
         : null;
       const real =
         row?.status === 'completed' &&
-        result?.executionMode === 'ollama' &&
+        (result?.executionMode === 'ollama' || result?.executionMode === 'gemini') &&
         result.inference === true &&
         result.model === config.model &&
         result.configurationDigest === inferenceConfigurationDigest(config) &&
-        status?.executionMode === 'ollama';
+        (status?.executionMode === 'ollama' || status?.executionMode === 'gemini');
       const test = result?.executionMode === 'test' || (!!row && !result && simulated);
       return {
         employeeId: e.id,

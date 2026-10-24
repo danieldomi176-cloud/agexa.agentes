@@ -452,7 +452,7 @@ export class ConversionService {
       task.id,
       result?.executionMode === 'test'
         ? 'simulated'
-        : result?.executionMode === 'ollama'
+        : result?.executionMode === 'ollama' || result?.executionMode === 'gemini'
           ? 'real'
           : 'unavailable',
       error ? 'failed' : 'contract_pass',

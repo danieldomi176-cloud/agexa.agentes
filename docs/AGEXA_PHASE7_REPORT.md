@@ -1,5 +1,41 @@
 # Fase 7 — relatório de prontidão operacional
 
+**Atualização Chromebook/ChromeOS, 2 GB:** o caminho prioritário passa a ser IA
+na nuvem, com Ollama local opcional. O adaptador Gemini está preparado, mas sem
+chave, elegibilidade gratuita ou acesso de rede validados; zero inferências reais.
+Ver [guia para Chromebook](AGEXA_CHROMEBOOK.md). O estado histórico abaixo continua
+válido para a entrega inicial; a atualização acrescenta testes e configuração.
+
+## Resultado da atualização para Chromebook
+
+- Gemini passa a fornecedor configurável e selecionado no ambiente operacional,
+  com modelo vazio, chave ausente, autorização de dados/nível gratuito desativadas
+  e teto interno de 20 tentativas/dia. Continua **pendente**, sem chamada de geração.
+- Adaptador conserva proxy/CA/TLS, destino fixo, limites, JSON, proveniência, cancelamento
+  e revisão humana. Credenciais no formulário são recusadas antes de validação;
+  não existe fallback pago, alteração automática de plano ou retry em 429.
+- Modo leve retira e restaura o canvas, conserva os oito funcionários e persiste
+  a preferência. Não se mediu RAM num Chromebook físico.
+- **1.135 testes passaram**: 196 interface + 932 servidor + 7 contratos. Mantêm-se
+  os 1.118 anteriores; 17 novos cobrem configuração, dados/nível gratuito/chave,
+  schema, cancelamento, quota sem retry, contador diário persistente e autenticação.
+- Build/tipos/lint, AsyncAPI, smoke, seis cenários Chromium anteriores e cenário
+  cloud desktop/mobile passaram. O teste cloud não tem chave nem inferência real;
+  confirma indisponibilidade, ausência de campo secreto, limite e modo leve.
+- Nova instalação limpa/recuperação em diretório temporário passou com o lockfile
+  atualizado: apenas promoção de `https-proxy-agent` 7.0.6 já presente, sem atualizar
+  versões existentes. Continua teste da mesma máquina, não host independente.
+- Backup privado antes das alterações; todas as tabelas anteriores iguais após
+  arranque. Depois guardou-se apenas a preferência Gemini e auditoria técnica.
+  Conhecimento/URL/oferta, conversas, consentimentos e conversões preservados;
+  sem dados fictícios ou tarefas de inferência no diretório operacional.
+
+O requisito seguro de chave/destino será guardado no rascunho do ambiente para o
+proprietário preencher/rever/publicar; isso não fornece credenciais nem prova acesso.
+Preços, elegibilidade, modelo e termos continuam por verificar na conta real.
+O backend remoto permanente e o acesso privado no Chromebook também exigem uma
+implantação adequada; não foram contratados serviços pagos ou garantida execução 24/7.
+
 Base preservada: `agexa/phase-6`, commit
 `9f5f947b86d894155f5bf53dedde2b81bb49eff0`. Desenvolvimento em `agexa/phase-7`,
 sem reiniciar o projeto, substituir integrações ou fazer force-push.

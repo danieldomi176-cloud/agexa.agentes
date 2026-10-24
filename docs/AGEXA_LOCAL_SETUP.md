@@ -1,5 +1,9 @@
 # Instalação e validação numa máquina de confiança — Fase 7
 
+**Atualização de perfil:** o CEO utiliza Chromebook/ChromeOS com 2 GB. Não executar
+esta instalação no Chromebook: usar o [guia de IA na nuvem](AGEXA_CHROMEBOOK.md).
+Os passos abaixo destinam-se ao backend noutra máquina; Ollama passa a ser opcional.
+
 Não foi instalado Ollama nem descarregado qualquer modelo nesta tarefa. O CEO
 confirmou que ainda não dispõe desses componentes e pediu preparação independente.
 Os números medidos na nuvem **não descrevem o computador pessoal do CEO**.

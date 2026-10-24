@@ -208,8 +208,8 @@ export function MessagingPanel({
         </select>
       </label>
       <p className="agexa-subtle">
-        Modo automático bloqueado nesta fase. Sem Ollama, usar rascunhos manuais ou material por
-        regras, identificado como tal.
+        Modo automático bloqueado nesta fase. Sem IA, usar rascunhos manuais ou material por regras,
+        identificado como tal.
       </p>
       {qr && (
         <figure className="messaging-qr">
@@ -520,7 +520,7 @@ function Conversation({
         </label>
         <label className="agexa-check">
           <input type="checkbox" checked={useAI} onChange={(e) => setUseAI(e.target.checked)} />
-          Usar inferência Ollama disponível, sem fallback simulado
+          Usar inferência do fornecedor selecionado, sem fallback simulado
         </label>
         <div className="crm-actions">
           <button

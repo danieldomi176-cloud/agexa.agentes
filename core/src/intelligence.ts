@@ -10,6 +10,10 @@ export const PLAN_ORDER: readonly EmployeeId[] = [
   'orion',
 ];
 export interface IntelligenceConfig {
+  provider?: 'ollama' | 'gemini';
+  cloudAuthorized?: boolean;
+  freeTierConfirmed?: boolean;
+  dailyRequestLimit?: number;
   baseUrl: string;
   model: string;
   timeoutMs: number;
@@ -58,7 +62,9 @@ export interface OllamaStatus {
   models: string[];
   checkedAt: string | null;
   error: string | null;
-  executionMode: 'ollama' | 'test';
+  executionMode: 'ollama' | 'gemini' | 'test';
+  credentialConfigured?: boolean;
+  freshForMs?: number;
 }
 export interface SalesWorkflow {
   id: string;
@@ -80,6 +86,7 @@ export interface AgentMemory {
   createdAt: string;
 }
 export interface IntelligenceSnapshot {
+  cloudUsage?: { day: string; attempts: number; limit: number };
   config: IntelligenceConfig;
   status: OllamaStatus;
   knowledge: AgexaKnowledge;

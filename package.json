@@ -129,6 +129,7 @@
     "test:agexa:messaging:e2e": "node scripts/agexa-messaging-e2e.mjs",
     "test:agexa:conversion:e2e": "node scripts/agexa-conversion-e2e.mjs",
     "test:agexa:operational:e2e": "node --import tsx scripts/agexa-conversion-e2e.mjs --operational",
+    "test:agexa:cloud:e2e": "node scripts/agexa-conversion-e2e.mjs --cloud-setup",
     "test:agexa:restore": "node scripts/agexa-restore-e2e.mjs"
   },
   "devDependencies": {
@@ -172,6 +173,7 @@
     "@fastify/static": "^10.1.2",
     "@fastify/websocket": "^11.2.0",
     "fastify": "^5.8.5",
+    "https-proxy-agent": "7.0.6",
     "qrcode": "1.5.4"
   },
   "overrides": {

@@ -825,7 +825,13 @@ export class MessagingService {
         c.id,
         body,
         task.employeeId,
-        result.executionMode === 'test' ? 'test' : result.inference === true ? 'ollama' : 'rules',
+        result.executionMode === 'test'
+          ? 'test'
+          : result.executionMode === 'gemini'
+            ? 'gemini'
+            : result.inference === true
+              ? 'ollama'
+              : 'rules',
         kind,
         task.id,
         meta.sourceMessageId,

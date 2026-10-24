@@ -552,7 +552,7 @@ function Review({ act, ready }: { act: Act; ready: boolean }) {
       </label>
       <label className="agexa-check">
         <input type="checkbox" checked={ai} onChange={(e) => setAI(e.target.checked)} />
-        Usar modelo Ollama verificado
+        Usar modelo de IA verificado
       </label>
       <button
         disabled={!ready}

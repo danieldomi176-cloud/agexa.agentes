@@ -15,6 +15,17 @@ export function registerIntelligenceRoutes(api: FastifyInstance, engine: SalesEn
   api.post<{ Body: IntelligenceConfig }>(
     '/intelligence/config',
     {
+      preValidation: async (request) => {
+        if (
+          request.body &&
+          typeof request.body === 'object' &&
+          Object.keys(request.body).some((key) => /key|token|secret|credential|password/i.test(key))
+        )
+          throw new SalesError(
+            'Chaves e credenciais só podem ser configuradas no backend seguro',
+            400,
+          );
+      },
       schema: {
         body: {
           type: 'object',
@@ -29,6 +40,10 @@ export function registerIntelligenceRoutes(api: FastifyInstance, engine: SalesEn
             'maxInferences',
           ],
           properties: {
+            provider: { enum: ['ollama', 'gemini'] },
+            cloudAuthorized: { type: 'boolean' },
+            freeTierConfirmed: { type: 'boolean' },
+            dailyRequestLimit: { type: 'integer', minimum: 1, maximum: 100 },
             baseUrl: { type: 'string', maxLength: 200 },
             model: { type: 'string', maxLength: 120 },
             timeoutMs: { type: 'integer', minimum: 50, maximum: 180000 },

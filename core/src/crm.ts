@@ -100,7 +100,7 @@ export interface SalesDraft {
   version: number;
   status: 'proposed' | 'approved' | 'rejected';
   taskId: string | null;
-  mode: 'rules' | 'ollama' | 'test' | 'manual';
+  mode: 'rules' | 'ollama' | 'gemini' | 'test' | 'manual';
   createdAt: string;
   internalOnly: true;
 }

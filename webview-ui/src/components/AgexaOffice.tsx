@@ -32,6 +32,13 @@ const date = (value: string): string =>
 
 export function AgexaOffice() {
   const office = useSalesOffice();
+  const [light, setLight] = useState(() => {
+    try {
+      return localStorage.getItem('agexa-light-mode') === '1';
+    } catch {
+      return false;
+    }
+  });
   const [open, setOpen] = useState(() => typeof window === 'undefined' || window.innerWidth > 760);
   const [selected, setSelected] = useState<EmployeeId>('nexus');
   const [credential, setCredential] = useState('');
@@ -107,24 +114,62 @@ export function AgexaOffice() {
               : 'A reconectar · dados podem estar desatualizados'}
           </span>
           <button onClick={() => setOpen(!open)}>{open ? 'Recolher painel' : 'Painel CEO'}</button>
+          <button
+            onClick={() => {
+              const next = !light;
+              setLight(next);
+              try {
+                localStorage.setItem('agexa-light-mode', next ? '1' : '0');
+              } catch {
+                /* Private browser may deny storage. */
+              }
+            }}
+          >
+            {light ? 'Mostrar escritório' : 'Modo leve'}
+          </button>
           <button onClick={logout}>Sair</button>
         </div>
       </header>
       <div className="agexa-workspace">
         <main className="agexa-office" aria-label="Escritório virtual Agexa">
-          <App
-            commercial={office.snapshot ?? undefined}
-            commercialLive={office.connection === 'connected'}
-            onEmployeeSelect={(id) => {
-              setSelected(id);
-              setOpen(true);
-            }}
-          />
+          {light ? (
+            <section className="agexa-light-office">
+              <h2>Equipa Agexa · modo leve</h2>
+              <p>
+                Escritório pixel art suspenso neste navegador para reduzir recursos. Tarefas e
+                estados continuam no backend.
+              </p>
+              <div className="agexa-team-grid">
+                {office.snapshot?.employees.map((e) => (
+                  <button
+                    key={e.id}
+                    onClick={() => {
+                      setSelected(e.id);
+                      setOpen(true);
+                    }}
+                  >
+                    <strong>{e.name}</strong>
+                    <small>{e.role}</small>
+                    <span>{statuses[e.status]}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : (
+            <App
+              commercial={office.snapshot ?? undefined}
+              commercialLive={office.connection === 'connected'}
+              onEmployeeSelect={(id) => {
+                setSelected(id);
+                setOpen(true);
+              }}
+            />
+          )}
           <div className="agexa-inference-note">
             {office.snapshot?.intelligence?.status.executionMode === 'test'
-              ? 'TESTE · API Ollama simulada'
+              ? `TESTE · API ${office.snapshot.intelligence.config.provider === 'gemini' ? 'Gemini' : 'Ollama'} simulada`
               : office.snapshot?.inference.connected
-                ? 'Inferência Ollama disponível · rascunhos internos'
+                ? `Inferência ${office.snapshot.inference.provider} disponível · rascunhos internos`
                 : 'Inferência indisponível · nenhum modelo ativo'}
           </div>
         </main>

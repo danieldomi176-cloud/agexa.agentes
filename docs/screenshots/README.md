@@ -3,6 +3,19 @@
 Estas capturas foram produzidas durante os testes em dados isolados.
 A captura da Fase 3 utiliza uma API Ollama simulada e não comprova inferência com um modelo real.
 
+## Atualização Chromebook 2 GB — nuvem e modo leve
+
+Dados isolados de teste. Gemini selecionado, **sem chave/modelo/inferência reais**.
+As confirmações de dados e nível gratuito estão desativadas; a preparação não é
+apresentada como ligação operacional. O modo leve retira o canvas e preserva a
+equipa/estados; não foi medido consumo num Chromebook físico.
+
+![Gemini preparado no backend, sem chave no navegador](fase-7-cloud-configuracao-teste.png)
+
+![Configuração da IA na nuvem em viewport mobile](fase-7-cloud-mobile-teste.png)
+
+![Modo leve com os oito funcionários e sem canvas pixel art](fase-7-modo-leve-teste.png)
+
 ## Fase 7 — prontidão e jornada controlada
 
 **Cenário fictício e isolado.** O backend/fila/SQLite e a interface funcionam,

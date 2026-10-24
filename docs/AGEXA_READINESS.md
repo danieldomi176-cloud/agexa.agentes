@@ -1,5 +1,10 @@
 # AGEXA OPERATIONAL READINESS
 
+Atualização Chromebook: a verificação do serviço de IA acompanha o fornecedor
+selecionado, incluindo Gemini na nuvem. Ollama local não é requisito do piloto
+quando Gemini estiver configurado. A lista de modelos e uma chave presente não
+comprovam inferência real nem nível gratuito; consultar [guia](AGEXA_CHROMEBOOK.md).
+
 Área privada do CEO → **Prontidão operacional**. O painel reutiliza autenticação,
 Ollama, fila, CRM, inbox e Conversion Engine. Não cria outro conector ou motor.
 

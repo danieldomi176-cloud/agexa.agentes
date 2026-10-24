@@ -15,7 +15,7 @@ import { DEFAULT_INTELLIGENCE } from '../../core/src/intelligence.js';
 import { AgentRuntime } from './agentRuntime.js';
 import { AgentStateStore } from './agentStateStore.js';
 import { SalesEngine } from './agexa/engine.js';
-import { OllamaInferenceAdapter } from './agexa/ollama.js';
+import { ProviderInferenceAdapter } from './agexa/inferenceProvider.js';
 import {
   buildAssetCache,
   loadAllCharacters,
@@ -243,7 +243,7 @@ async function main(): Promise<void> {
   const salesEngine = args.agexa
     ? new SalesEngine(
         getDataDirectory(),
-        new OllamaInferenceAdapter(
+        new ProviderInferenceAdapter(
           DEFAULT_INTELLIGENCE,
           process.env.AGEXA_INFERENCE_TEST_MODE === '1' ? 'test' : 'ollama',
         ),

@@ -53,15 +53,88 @@ function Configuration({
   return (
     <section>
       <h3>Central de Inteligência</h3>
+      <p>
+        Chromebook com 2 GB: usar apenas o navegador. O backend e a IA na nuvem correm numa
+        máquina/serviço remoto; Ollama local é opcional.
+      </p>
+      <label>
+        Fornecedor de inteligência artificial
+        <select
+          aria-label="Fornecedor de inteligência artificial"
+          value={config.provider ?? 'ollama'}
+          onChange={(e) =>
+            setConfig({
+              ...config,
+              provider: e.target.value as 'ollama' | 'gemini',
+              baseUrl:
+                e.target.value === 'gemini'
+                  ? 'https://generativelanguage.googleapis.com'
+                  : 'http://127.0.0.1:11434',
+              model: '',
+              cloudAuthorized: false,
+              freeTierConfirmed: false,
+              dailyRequestLimit: 20,
+            })
+          }
+        >
+          <option value="gemini">Gemini na nuvem · opção gratuita a confirmar</option>
+          <option value="ollama">Ollama · opcional noutra máquina</option>
+        </select>
+      </label>
+      {config.provider === 'gemini' && (
+        <>
+          <p>
+            Tentativas de geração hoje (UTC): {intel.cloudUsage?.attempts ?? 0} /{' '}
+            {intel.cloudUsage?.limit ?? config.dailyRequestLimit ?? 20}. Contador persistente; não
+            substitui as quotas do fornecedor.
+          </p>
+          <p>
+            Chave apenas no backend:{' '}
+            {intel.status.credentialConfigured ? 'configurada no processo' : 'não configurada'}.
+            Nunca colocar no navegador ou chat. Listar modelos não comprova que são gratuitos.
+          </p>
+          <p>
+            No nível gratuito, rever termos de utilização dos dados e enviar apenas contexto
+            autorizado, sem dados sensíveis. A elegibilidade depende da conta/região e pode mudar.
+          </p>
+          <label className="agexa-check">
+            <input
+              type="checkbox"
+              checked={config.freeTierConfirmed ?? false}
+              onChange={(e) => setConfig({ ...config, freeTierConfirmed: e.target.checked })}
+            />
+            Verifiquei que o modelo e a conta utilizam o nível gratuito, sem faturação paga.
+          </label>
+          <label className="agexa-check">
+            <input
+              type="checkbox"
+              checked={config.cloudAuthorized ?? false}
+              onChange={(e) => setConfig({ ...config, cloudAuthorized: e.target.checked })}
+            />
+            Autorizo enviar os contextos das tarefas de IA deste escritório ao fornecedor, após
+            rever os termos de dados.
+          </label>
+          <label>
+            Limite diário interno de tentativas de geração
+            <input
+              type="number"
+              min={1}
+              max={100}
+              value={config.dailyRequestLimit ?? 20}
+              onChange={(e) => setConfig({ ...config, dailyRequestLimit: Number(e.target.value) })}
+            />
+          </label>
+        </>
+      )}
       <p role="status">
         {intel.status.executionMode === 'test'
-          ? 'TESTE · contrato Ollama simulado'
+          ? `TESTE · contrato ${intel.config.provider === 'gemini' ? 'Gemini' : 'Ollama'} simulado`
           : intel.status.connected
-            ? 'Ollama e modelo disponíveis'
+            ? `${intel.config.provider === 'gemini' ? 'Gemini' : 'Ollama'} e modelo disponíveis`
             : 'Inferência indisponível'}
       </p>
       <p>
-        Serviço: {intel.status.reachable ? 'acessível' : 'não acessível'} · binário local:{' '}
+        Serviço: {intel.status.reachable ? 'acessível' : 'não acessível'} · binário Ollama opcional:{' '}
         {intel.status.binaryDetected ? 'detetado' : 'não detetado'}
       </p>
       <p>
@@ -76,7 +149,7 @@ function Configuration({
           : 'ainda não realizada'}
       </p>
       <button disabled={!ready} onClick={() => act('intelligence/probe', {})}>
-        Verificar Ollama e modelos
+        {config.provider === 'gemini' ? 'Verificar IA na nuvem' : 'Verificar Ollama e modelos'}
       </button>
       <form
         onSubmit={(e) => {
@@ -85,23 +158,31 @@ function Configuration({
         }}
       >
         <label>
-          Endereço Ollama
+          {config.provider === 'gemini' ? 'Endpoint Gemini fixo' : 'Endereço Ollama'}
           <input
             required
+            readOnly={config.provider === 'gemini'}
             value={config.baseUrl}
             onChange={(e) => setConfig({ ...config, baseUrl: e.target.value })}
           />
         </label>
         <p className="agexa-subtle">
-          Apenas loopback do servidor (127.0.0.1, localhost ou ::1). Não é o localhost do seu
-          telemóvel.
+          {config.provider === 'gemini'
+            ? 'HTTPS e proxy/TLS preservados. Sem endpoint personalizado nem chave na interface.'
+            : 'Apenas loopback do servidor (127.0.0.1, localhost ou ::1). Não é o localhost do seu telemóvel.'}
         </p>
         <label>
-          Modelo instalado
+          {config.provider === 'gemini' ? 'Modelo disponível na conta' : 'Modelo instalado'}
           <select
             aria-label="Modelo instalado"
             value={config.model}
-            onChange={(e) => setConfig({ ...config, model: e.target.value })}
+            onChange={(e) =>
+              setConfig({
+                ...config,
+                model: e.target.value,
+                ...(config.provider === 'gemini' ? { freeTierConfirmed: false } : {}),
+              })
+            }
           >
             <option value="">Selecionar modelo</option>
             {Array.from(
@@ -135,8 +216,9 @@ function Configuration({
         <button disabled={!ready}>Guardar configuração de IA</button>
       </form>
       <p className="agexa-subtle">
-        Nenhum modelo é descarregado. Configurar um nome não comprova disponibilidade; o backend
-        consulta o serviço real. Os oito funcionários podem partilhar o mesmo modelo.
+        Nenhum modelo é descarregado. Configurar um nome não comprova inferência. Sem repetição
+        automática, troca de fornecedor ou ativação de plano pago. Os oito funcionários podem
+        partilhar o mesmo modelo.
       </p>
       <h3>Histórico de inferências</h3>
       {office

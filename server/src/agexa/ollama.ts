@@ -13,13 +13,34 @@ import { systemInstructions, validateOperationalResult } from './prompts.js';
 
 export const inferenceConfigurationDigest = (config: IntelligenceConfig): string =>
   createHash('sha256')
-    .update(JSON.stringify({ baseUrl: config.baseUrl, model: config.model }))
+    .update(
+      JSON.stringify({
+        baseUrl: config.baseUrl,
+        model: config.model,
+        ...(config.provider === 'gemini' ? { provider: 'gemini' } : {}),
+      }),
+    )
     .digest('hex');
 
 export function validateIntelligenceConfig(value: IntelligenceConfig): void {
+  if (value.provider !== undefined && !['ollama', 'gemini'].includes(value.provider))
+    throw new Error('Fornecedor de IA inválido');
   const url = new URL(value.baseUrl);
   const host = url.hostname.replace(/^\[|\]$/g, '');
-  if (
+  if (value.provider === 'gemini') {
+    if (value.baseUrl !== 'https://generativelanguage.googleapis.com')
+      throw new Error('Endpoint Gemini fixo; não são aceites URLs personalizados');
+    if (
+      typeof value.cloudAuthorized !== 'boolean' ||
+      typeof value.freeTierConfirmed !== 'boolean' ||
+      !Number.isInteger(value.dailyRequestLimit) ||
+      value.dailyRequestLimit! < 1 ||
+      value.dailyRequestLimit! > 100
+    )
+      throw new Error('Confirmar dados, nível gratuito e limite diário entre 1 e 100');
+    if (value.model && !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,119}$/.test(value.model))
+      throw new Error('Nome de modelo Gemini inválido');
+  } else if (
     !['127.0.0.1', 'localhost', '::1'].includes(host) ||
     !['http:', 'https:'].includes(url.protocol) ||
     url.username ||
@@ -55,7 +76,9 @@ const binaryDetected = (): boolean =>
   });
 
 export class OllamaInferenceAdapter implements InferenceAdapter {
-  readonly name = 'ollama';
+  get name(): string {
+    return 'ollama';
+  }
   private configuration: IntelligenceConfig;
   private knowledge: () => AgexaKnowledge = () => EMPTY_KNOWLEDGE;
   private last: OllamaStatus;
@@ -65,6 +88,8 @@ export class OllamaInferenceAdapter implements InferenceAdapter {
     private readonly mode: 'ollama' | 'test' = 'ollama',
   ) {
     validateIntelligenceConfig(config);
+    if (config.provider === 'gemini')
+      throw new Error('Gemini exige o adaptador de fornecedores da aplicação');
     this.configuration = { ...config };
     this.last = {
       reachable: false,
@@ -95,6 +120,8 @@ export class OllamaInferenceAdapter implements InferenceAdapter {
   }
   configure(config: IntelligenceConfig): void {
     validateIntelligenceConfig(config);
+    if (config.provider === 'gemini')
+      throw new Error('Gemini exige o adaptador de fornecedores da aplicação');
     this.configuration = { ...config };
     this.last = {
       ...this.last,

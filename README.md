@@ -2,6 +2,12 @@
 
 **Organização que trabalha por ti.**
 
+**Chromebook com 2 GB:** usar o navegador com backend remoto e IA na nuvem.
+Ollama local não é requisito. A opção Gemini está preparada, com chave só no
+backend, confirmação do nível gratuito e limite diário. A ligação real depende
+de conta/chave/rede autorizadas. Ver [guia para Chromebook](docs/AGEXA_CHROMEBOOK.md).
+O botão **Modo leve** permite suspender o canvas no navegador sem parar a equipa.
+
 O escritório comercial Agexa preserva Pixel Agents, editor, oito funcionários,
 CRM e inbox. A Fase 6 acrescenta o Conversion Engine: factos auditados de cadastro,
 teste e pagamento, referências opacas, Free Trial Tracker, acompanhamento do CEO e

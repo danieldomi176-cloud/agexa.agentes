@@ -287,6 +287,9 @@ export class SalesEngine extends EventEmitter {
       ...(this.inference instanceof OllamaInferenceAdapter
         ? {
             intelligence: {
+              ...(this.memory.config().provider === 'gemini'
+                ? { cloudUsage: this.cloudUsage() }
+                : {}),
               config: this.memory.config(),
               status: this.inference.status,
               knowledge: this.memory.knowledge(),
@@ -528,10 +531,10 @@ export class SalesEngine extends EventEmitter {
         null,
         'unavailable',
         'unavailable',
-        'Ollama/modelo indisponível; nenhuma inferência realizada.',
+        'Fornecedor/modelo de IA indisponível; nenhuma inferência realizada.',
       );
       this.changed();
-      throw new SalesError('Ollama real indisponível; escolher serviço/modelo na Central IA');
+      throw new SalesError('IA indisponível; escolher fornecedor e modelo na Central IA');
     }
     const task = this.transaction(() =>
       this.commercialTask({
@@ -1043,7 +1046,13 @@ export class SalesEngine extends EventEmitter {
           task.employeeId,
           draftKind(task.employeeId),
           result.draft,
-          result.executionMode === 'test' ? 'test' : result.inference === true ? 'ollama' : 'rules',
+          result.executionMode === 'test'
+            ? 'test'
+            : result.executionMode === 'gemini'
+              ? 'gemini'
+              : result.inference === true
+                ? 'ollama'
+                : 'rules',
           task.id,
         );
       if (task.employeeId === 'sophia') this.crm.handoff(input.companyId, this.memory.knowledge());
@@ -1434,12 +1443,17 @@ export class SalesEngine extends EventEmitter {
         this.messaging.workContext(
           String((task.input.messaging as { conversationId: string }).conversationId),
         );
-      if (task.kind === 'ai_request')
+      if (task.kind === 'ai_request') {
+        if (
+          this.inference instanceof OllamaInferenceAdapter &&
+          this.inference.config.provider === 'gemini'
+        )
+          this.claimCloudRequest();
         result = await this.inference.run(this.inferenceTask(task), {
           signal,
           objective: SALES_OBJECTIVE,
         });
-      else {
+      } else {
         const operation =
           task.kind === 'conversion_report'
             ? {
@@ -1472,6 +1486,36 @@ export class SalesEngine extends EventEmitter {
     } finally {
       this.active.delete(task.id);
     }
+  }
+  private cloudUsage(): { day: string; attempts: number; limit: number } {
+    const day = new Date().toISOString().slice(0, 10);
+    const row = this.db.prepare("SELECT value FROM settings WHERE key='cloud_daily_usage'").get();
+    const value = row ? (JSON.parse(String(row.value)) as { day: string; count: number }) : null;
+    return {
+      day,
+      attempts: value?.day === day ? value.count : 0,
+      limit: this.memory.config().dailyRequestLimit ?? 20,
+    };
+  }
+  private claimCloudRequest(): void {
+    const config = this.memory.config();
+    if (!config.cloudAuthorized || !config.freeTierConfirmed)
+      throw new SalesError('IA na nuvem sem confirmação de dados e nível gratuito');
+    this.transaction(() => {
+      const day = new Date().toISOString().slice(0, 10);
+      const row = this.db.prepare("SELECT value FROM settings WHERE key='cloud_daily_usage'").get();
+      const prior = row ? (JSON.parse(String(row.value)) as { day: string; count: number }) : null;
+      const count = prior?.day === day ? prior.count : 0;
+      if (count >= (config.dailyRequestLimit ?? 20))
+        throw new SalesError(
+          'Limite diário interno de IA na nuvem atingido; sem repetição ou plano pago automático',
+        );
+      this.db
+        .prepare(
+          "INSERT INTO settings VALUES ('cloud_daily_usage',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        )
+        .run(JSON.stringify({ day, count: count + 1 }));
+    });
   }
   private finish(
     task: SalesTask,

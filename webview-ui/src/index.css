@@ -555,6 +555,10 @@
 .agexa-readiness {
   overflow-wrap: anywhere;
 }
+.agexa-light-office {
+  padding: 16px;
+  overflow-wrap: anywhere;
+}
 .agexa-readiness .agexa-event strong,
 .agexa-readiness .agexa-event small {
   display: block;

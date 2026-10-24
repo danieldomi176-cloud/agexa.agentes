@@ -1079,3 +1079,54 @@ arranque Fase 7, smoke HTTP/WebSocket aprovado e prontidão sem token recusada.
 Depois registaram-se apenas verificações técnicas/indisponibilidade e backup
 consistente privado, com hash/permissões aprovados. Sem fixtures ou tarefas de
 inferência fictícias; URL preservado, oferta inativa e piloto bloqueado.
+
+### Atualização Fase 7 — Chromebook 2 GB e IA na nuvem
+
+O CEO informou ChromeOS e apenas 2 GB de RAM. O Chromebook passa a ser cliente
+do navegador, sem Node/Ollama/modelo local obrigatório. O backend remoto mantém
+SQLite, tarefas e integrações. A sessão Codex não é garantia de hospedagem 24/7;
+não se contratou serviço pago nem se publicou o servidor administrativo na internet.
+
+Foi acrescentado Gemini Developer API como fornecedor explícito, mantendo Ollama
+opcional e o mesmo motor/adaptador configurável. O endpoint HTTPS é fixo e o proxy/
+TLS são preservados; chave apenas no backend via `AGEXA_GEMINI_API_KEY`, sem campo
+de segredo no frontend. Requer confirmação do nível gratuito e dos contextos
+autorizados; não há fallback pago, troca automática de modelo ou retry após falha.
+
+O teto interno é de 20 tentativas de geração/dia UTC por omissão, ajustável 1–100,
+persistente no SQLite e aplicado também a tentativas falhadas. Não representa
+quota gratuita do fornecedor. O operador precisa de verificar plano, modelo,
+região e termos na conta real; uma declaração no Office não verifica faturação.
+Modelos são listados pela API sem inventar preço ou selecionar automaticamente.
+Os contratos JSON, validações, eventos e histórico distinguem Gemini real de teste.
+
+O modo leve desmonta o canvas no navegador e conserva os oito funcionários com
+estados reais. Mostrar escritório restaura o Pixel Agents/editor; a preferência
+é local e não suspende tarefas do backend. Não foi medido consumo num Chromebook
+físico de 2 GB, portanto não se promete um limite exato de memória.
+
+A API/documentação Google foram recusadas pelo proxy (CONNECT 403) e não existe
+chave configurada. O README/tipos do SDK oficial `googleapis/js-genai` acessíveis
+no GitHub foram consultados. Não se garante modelo/quotas gratuitos atuais.
+**Nenhuma inferência Gemini real foi executada.** Os testes de transporte são
+injetados e identificados como simulados. A oferta, Base44 e WhatsApp continuam
+com as confirmações/bloqueios existentes.
+
+`https-proxy-agent` 7.0.6, já presente no lockfile como dependência transitiva,
+passa a dependência direta de runtime para preservar o proxy sem SDK pesado.
+Nenhuma versão existente foi atualizada; o lockfile só promove essa dependência
+e os seus transitivos. A licença original permanece intacta.
+
+Ver [guia Chromebook e configuração segura](AGEXA_CHROMEBOOK.md).
+Novo cenário: `AGEXA_CHROMIUM_PATH=/usr/bin/chromium npm run test:agexa:cloud:e2e`.
+
+Verificações da atualização: **1.135 testes** (196 interface + 932 servidor + 7
+contratos), build/tipos/lint, AsyncAPI, smoke, seis cenários anteriores e novo
+cenário cloud desktop/mobile. Instalação limpa e recuperação novamente aprovadas
+na mesma máquina. Os 1.118 anteriores foram mantidos; 17 novos. Testes cloud usam
+transporte injetado ou falta explícita de chave, sem inferência real.
+
+Após arranque, todos os hashes anteriores coincidiram; só depois se guardou a
+preferência Gemini com modelo vazio, flags de dados/nível gratuito falsas e teto de 20.
+Não se ativou inferência, oferta, canal ou integração externa. A chave continua
+ausente; prontidão cloud pendente; estado comercial anterior preservado.

@@ -54,7 +54,7 @@ export interface MessagingDraft {
   body: string;
   kind: 'reply' | 'invitation';
   employeeId: EmployeeId | 'ceo';
-  mode: 'manual' | 'rules' | 'ollama' | 'test';
+  mode: 'manual' | 'rules' | 'ollama' | 'gemini' | 'test';
   status: 'proposed' | 'approved' | 'rejected' | 'sending' | 'sent' | 'failed' | 'reconciliation';
   version: number;
   sourceMessageId: string;

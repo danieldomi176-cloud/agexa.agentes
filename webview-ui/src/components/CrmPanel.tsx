@@ -1021,7 +1021,7 @@ function Workspace({ office, act, ready }: { office: SalesOffice; act: Action; r
             checked={useAI}
             onChange={(e) => setUseAI(e.target.checked)}
           />
-          Usar Ollama verificado para plano e materiais; sem IA, apenas operações por regras
+          Usar IA verificada para plano e materiais; sem IA, apenas operações por regras
           identificadas.
         </label>
         <button disabled={!ready || office.snapshot!.suspended}>Propor operação comercial</button>
