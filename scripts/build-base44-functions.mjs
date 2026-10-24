@@ -3,7 +3,12 @@ import { build } from 'esbuild';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 
 const check = process.argv.includes('--check');
-for (const name of ['agexaConversionFeed', 'publishConversionEvent']) {
+for (const name of [
+  'agexaConversionFeed',
+  'publishConversionEvent',
+  'agexaOfficeAdmin',
+  'officeClient',
+]) {
   const result = await build({
     entryPoints: [`integrations/base44/${name}.ts`],
     bundle: true,
@@ -31,3 +36,171 @@ console.log(
     ? 'Base44 artifacts match sources (no deploy).'
     : 'Base44 editor artifacts generated (no deploy).',
 );
+
+// Derive the external contract from the same closed catalogue used by both ends.
+const catalogue = await build({
+  stdin: {
+    contents: "export { CEO_OPERATIONS } from './core/src/ceoBridge.ts';",
+    resolveDir: process.cwd(),
+  },
+  bundle: true,
+  write: false,
+  platform: 'neutral',
+  format: 'esm',
+  target: 'es2022',
+});
+const { CEO_OPERATIONS } = await import(
+  'data:text/javascript;base64,' + Buffer.from(catalogue.outputFiles[0].text).toString('base64')
+);
+const browser = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['operation', 'requestId', 'input'],
+  properties: {
+    operation: { type: 'string', enum: Object.keys(CEO_OPERATIONS) },
+    requestId: {
+      type: 'string',
+      pattern:
+        '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
+    },
+    confirm: { type: 'boolean' },
+    input: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        params: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['id'],
+          properties: { id: { type: 'string', pattern: '^[A-Za-z0-9_-]{1,100}$' } },
+        },
+        query: {
+          type: 'object',
+          maxProperties: 10,
+          additionalProperties: {
+            oneOf: [{ type: 'string', maxLength: 200 }, { type: 'integer' }],
+          },
+        },
+        body: { type: 'object' },
+      },
+    },
+  },
+  allOf: [
+    {
+      if: {
+        properties: {
+          operation: {
+            enum: Object.keys(CEO_OPERATIONS).filter((k) => CEO_OPERATIONS[k][0] === 'control'),
+          },
+        },
+      },
+      then: { required: ['confirm'], properties: { confirm: { const: true } } },
+    },
+  ],
+};
+const backend = {
+  ...browser,
+  required: [...browser.required, 'actorId'],
+  properties: {
+    ...browser.properties,
+    actorId: { type: 'string', pattern: '^[A-Za-z0-9_-]{1,200}$' },
+  },
+};
+const contract = {
+  openapi: '3.1.0',
+  info: {
+    title: 'AGEXA Office CEO bridge',
+    version: '1.0.0',
+    description:
+      'Server-to-server only. Base44 session and immutable CEO allowlist must be checked before signing. No production URL is configured.',
+  },
+  paths: {
+    '/api/ceo/v1/request': {
+      post: {
+        operationId: 'officeCeoRequest',
+        security: [{ hmac: [] }],
+        parameters: [
+          {
+            in: 'header',
+            name: 'X-Agexa-Timestamp',
+            required: true,
+            schema: { type: 'string', pattern: '^[0-9]{13}$' },
+          },
+          {
+            in: 'header',
+            name: 'X-Agexa-Nonce',
+            required: true,
+            schema: {
+              type: 'string',
+              pattern:
+                '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
+            },
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/BackendRequest' } },
+          },
+        },
+        responses: {
+          default: {
+            description:
+              'Authenticated replies are signed, correlated to requestId, and no-store. Pre-authentication/configuration failures may return an unsigned error.',
+            content: {
+              'application/json': {
+                schema: {
+                  oneOf: [
+                    { $ref: '#/components/schemas/Reply' },
+                    {
+                      type: 'object',
+                      properties: { error: { type: 'string' } },
+                      required: ['error'],
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+  components: {
+    securitySchemes: {
+      hmac: {
+        type: 'apiKey',
+        in: 'header',
+        name: 'X-Agexa-Signature',
+        description:
+          'HMAC-SHA256 domain-separated request signature, timestamp and nonce; TLS and trusted proxy are additionally required. See AGEXA_CEO_API.md.',
+      },
+    },
+    schemas: {
+      BrowserRequest: browser,
+      BackendRequest: backend,
+      Reply: {
+        type: 'object',
+        required: ['requestId', 'ok', 'status', 'result'],
+        additionalProperties: false,
+        properties: {
+          requestId: { type: 'string' },
+          ok: { type: 'boolean' },
+          status: { type: 'integer' },
+          result: {},
+        },
+      },
+    },
+  },
+  'x-office-operations': Object.fromEntries(
+    Object.entries(CEO_OPERATIONS).map(([name, [scope, method, path]]) => [
+      name,
+      { scope, method, internalPath: path },
+    ]),
+  ),
+};
+const schemaPath = 'integrations/base44/office-admin.openapi.json',
+  schemaText = JSON.stringify(contract, null, 2) + '\n';
+if (check) {
+  if ((await readFile(schemaPath, 'utf8')) !== schemaText) throw Error('Stale CEO contract');
+} else await writeFile(schemaPath, schemaText);

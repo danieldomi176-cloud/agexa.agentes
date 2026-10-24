@@ -1,0 +1,35 @@
+{
+  "format": "manual-render-configuration-not-an-auto-create-blueprint",
+  "repository": "https://github.com/danieldomi176-cloud/agexa.agentes",
+  "branch": "agexa/stage-1-deploy",
+  "runtime": "Node",
+  "rootDirectory": ".",
+  "buildCommand": "PUPPETEER_SKIP_DOWNLOAD=true HUSKY=0 npm ci --include=dev && npm run build && npm run base44:check",
+  "startCommand": "npm run start:hosted",
+  "healthCheckPath": "/healthz",
+  "autoDeploy": false,
+  "replicas": 1,
+  "persistentDisk": {
+    "required": true,
+    "mountPath": "/var/data",
+    "ephemeralFallbackAllowed": false,
+    "plan": null,
+    "costApproved": false,
+    "instruction": "Check current disk eligibility and price. Do not create or upgrade a paid service. Render Free ephemeral storage does not meet this requirement."
+  },
+  "environment": {
+    "NODE_VERSION": "22.23.4",
+    "NODE_ENV": "production",
+    "PUPPETEER_SKIP_DOWNLOAD": "true",
+    "AGEXA_TLS_TERMINATION": "render",
+    "AGEXA_CEO_BRIDGE_ENABLED": "1",
+    "AGEXA_PERSISTENT_ROOT": "/var/data",
+    "AGEXA_DATA_DIR": "/var/data/agexa",
+    "AGEXA_MAINTENANCE": "1"
+  },
+  "providerSupplied": ["PORT", "RENDER", "RENDER_EXTERNAL_URL"],
+  "ownerMustConfigure": ["AGEXA_CEO_CONTROL_IDS", "AGEXA_CEO_BRIDGE_SECRET"],
+  "optional": ["AGEXA_CEO_READ_IDS", "AGEXA_OFFICE_PUBLIC_ORIGIN", "AGEXA_GEMINI_API_KEY"],
+  "secretValuesIncluded": false,
+  "online": false
+}

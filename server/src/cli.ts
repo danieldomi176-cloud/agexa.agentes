@@ -441,9 +441,15 @@ async function main(): Promise<void> {
     // address; only the consent-bearing toggle needs the token.
     const displayHost =
       args.host === '0.0.0.0' || args.host === '::' || args.host === '' ? '127.0.0.1' : args.host;
-    console.log(
-      `\n  Pixel Agents server running at http://${displayHost}:${config.port}/?token=${config.token}\n`,
-    );
+    if (process.env.AGEXA_CEO_BRIDGE_ENABLED === '1') {
+      console.log(
+        'AGEXA Office backend ready; CEO bridge mode. Administrative bootstrap URL suppressed.',
+      );
+    } else {
+      console.log(
+        `\n  Pixel Agents server running at http://${displayHost}:${config.port}/?token=${config.token}\n`,
+      );
+    }
 
     // ── Graceful shutdown ──
     let shuttingDown = false;

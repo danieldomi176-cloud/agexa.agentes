@@ -1165,3 +1165,39 @@ As capturas desktop/mobile estão em `docs/screenshots/base44-setup-*.png` para
 consulta no GitHub; mostram configuração pendente num backend isolado.
 `install_script` mantém-se; `start_skill`, commit e requisito não secreto do caminho
 de montagem são preparados no rascunho do ambiente para revisão/publicação.
+
+### Etapa 1 — servidor para publicação, sem deploy efetuado
+
+Branch `agexa/stage-1-deploy`, baseada em `agexa/base44-integration` no commit
+`3e56012e3fe865dee181ce8ec6d8054e166e83be`. O motor e as funcionalidades comerciais
+existentes são preservados; esta etapa acrescenta acesso seguro e configuração de
+publicação, sem novos agentes, dashboards ou CRM.
+
+`npm run start:hosted` abre `0.0.0.0:$PORT`, mantendo o CLI/motor original privado
+em loopback. Só publica `/healthz` e o contrato HMAC `/api/ceo/v1/request`.
+Terminal, shell, hooks, ficheiros, SPA, WebSocket legado e rotas administrativas
+originais não ficam acessíveis por essa entrada. O BFF Base44 verifica sessão e
+User ID; o browser não recebe chave ou token permanente do Office. Aprovações,
+consentimentos, handoff, tarefas e inferência continuam nos mesmos serviços Node.
+
+Modo Render exige disco efetivamente montado não efémero e metadados da plataforma.
+Modo manutenção permite restaurar os dados anteriores sem iniciar o motor; o
+arranque normal recusa base ausente. O serviço de backups existente é reutilizado
+no arranque e a cada seis horas, com verificação e cinco cópias privadas. Backup
+externo e plano de recuperação de desastres continuam a cargo da publicação real.
+
+Configuração manual de deploy em `deploy/render/service.json`, sem criação
+automática, plano pago ou valores secretos. **Render Free com disco efémero não
+cumpre esta persistência**; verificar suporte/custo no painel e parar se exigir
+pagamento, conforme instrução do CEO. Não se contratou nem publicou hospedagem.
+
+Validação: **1.204 testes** (196 interface + 1.001 servidor + 7 contratos), mantendo
+os anteriores; build/tipos/lint, AsyncAPI, contrato gerado, smoke, regressões
+Chromium e novo cenário hosted com TLS de teste verificado, PORT, bloqueio de
+rotas, backup e reinício. Login Base44, TLS público, plano/disco Render e deploy
+real permanecem pendentes. O backend privado desta sessão foi reiniciado e todos
+os hashes/IDs anteriores do SQLite coincidiram; nenhuma fixture na base operacional.
+
+Próxima etapa: [instruções exatas para publicar o backend](AGEXA_STAGE1_DEPLOY.md).
+Contrato: [AGEXA_CEO_API.md](AGEXA_CEO_API.md). Não confundir a sessão de
+desenvolvimento, rascunho de ambiente ou testes locais com hospedagem permanente.

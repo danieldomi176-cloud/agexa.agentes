@@ -1,0 +1,497 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AGEXA Office CEO bridge",
+    "version": "1.0.0",
+    "description": "Server-to-server only. Base44 session and immutable CEO allowlist must be checked before signing. No production URL is configured."
+  },
+  "paths": {
+    "/api/ceo/v1/request": {
+      "post": {
+        "operationId": "officeCeoRequest",
+        "security": [
+          {
+            "hmac": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Agexa-Timestamp",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]{13}$"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Agexa-Nonce",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BackendRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "default": {
+            "description": "Authenticated replies are signed, correlated to requestId, and no-store. Pre-authentication/configuration failures may return an unsigned error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Reply"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "hmac": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Agexa-Signature",
+        "description": "HMAC-SHA256 domain-separated request signature, timestamp and nonce; TLS and trusted proxy are additionally required. See AGEXA_CEO_API.md."
+      }
+    },
+    "schemas": {
+      "BrowserRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "requestId",
+          "input"
+        ],
+        "properties": {
+          "operation": {
+            "type": "string",
+            "enum": [
+              "office.state",
+              "tasks.list",
+              "tasks.get",
+              "nexus.workflows",
+              "crm.overview",
+              "crm.companies",
+              "crm.company",
+              "conversion.overview",
+              "conversion.events",
+              "reports.orion",
+              "integrations.state",
+              "messages.list",
+              "messages.detail",
+              "audit.list",
+              "nexus.command",
+              "nexus.order",
+              "task.approve",
+              "task.cancel",
+              "workflow.approve",
+              "workflow.cancel",
+              "order.approve",
+              "order.cancel",
+              "employee.set",
+              "operations.set",
+              "operations.stop",
+              "crm.draft.review",
+              "message.review"
+            ]
+          },
+          "requestId": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+          },
+          "confirm": {
+            "type": "boolean"
+          },
+          "input": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "params": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,100}$"
+                  }
+                }
+              },
+              "query": {
+                "type": "object",
+                "maxProperties": 10,
+                "additionalProperties": {
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    {
+                      "type": "integer"
+                    }
+                  ]
+                }
+              },
+              "body": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "operation": {
+                  "enum": [
+                    "nexus.command",
+                    "nexus.order",
+                    "task.approve",
+                    "task.cancel",
+                    "workflow.approve",
+                    "workflow.cancel",
+                    "order.approve",
+                    "order.cancel",
+                    "employee.set",
+                    "operations.set",
+                    "operations.stop",
+                    "crm.draft.review",
+                    "message.review"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "confirm"
+              ],
+              "properties": {
+                "confirm": {
+                  "const": true
+                }
+              }
+            }
+          }
+        ]
+      },
+      "BackendRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "requestId",
+          "input",
+          "actorId"
+        ],
+        "properties": {
+          "operation": {
+            "type": "string",
+            "enum": [
+              "office.state",
+              "tasks.list",
+              "tasks.get",
+              "nexus.workflows",
+              "crm.overview",
+              "crm.companies",
+              "crm.company",
+              "conversion.overview",
+              "conversion.events",
+              "reports.orion",
+              "integrations.state",
+              "messages.list",
+              "messages.detail",
+              "audit.list",
+              "nexus.command",
+              "nexus.order",
+              "task.approve",
+              "task.cancel",
+              "workflow.approve",
+              "workflow.cancel",
+              "order.approve",
+              "order.cancel",
+              "employee.set",
+              "operations.set",
+              "operations.stop",
+              "crm.draft.review",
+              "message.review"
+            ]
+          },
+          "requestId": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+          },
+          "confirm": {
+            "type": "boolean"
+          },
+          "input": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "params": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,100}$"
+                  }
+                }
+              },
+              "query": {
+                "type": "object",
+                "maxProperties": 10,
+                "additionalProperties": {
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    {
+                      "type": "integer"
+                    }
+                  ]
+                }
+              },
+              "body": {
+                "type": "object"
+              }
+            }
+          },
+          "actorId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,200}$"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "operation": {
+                  "enum": [
+                    "nexus.command",
+                    "nexus.order",
+                    "task.approve",
+                    "task.cancel",
+                    "workflow.approve",
+                    "workflow.cancel",
+                    "order.approve",
+                    "order.cancel",
+                    "employee.set",
+                    "operations.set",
+                    "operations.stop",
+                    "crm.draft.review",
+                    "message.review"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "confirm"
+              ],
+              "properties": {
+                "confirm": {
+                  "const": true
+                }
+              }
+            }
+          }
+        ]
+      },
+      "Reply": {
+        "type": "object",
+        "required": [
+          "requestId",
+          "ok",
+          "status",
+          "result"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "requestId": {
+            "type": "string"
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "result": {}
+        }
+      }
+    }
+  },
+  "x-office-operations": {
+    "office.state": {
+      "scope": "read",
+      "method": "GET",
+      "internalPath": "/state"
+    },
+    "tasks.list": {
+      "scope": "read",
+      "method": "GET",
+      "internalPath": "/tasks"
+    },
+    "tasks.get": {
+      "scope": "read",
+      "method": "GET",
+      "internalPath": "/tasks/:id"
+    },
+    "nexus.workflows": {
+      "scope": "read",
+      "method": "GET",
+      "internalPath": "/nexus"
+    },
+    "crm.overview": {
+      "scope": "read",
+      "method": "GET",
+      "internalPath": "/crm"
+    },
+    "crm.companies": {
+      "scope": "read",
+      "method": "GET",
+      "internalPath": "/crm/companies"
+    },
+    "crm.company": {
+      "scope": "read",
+      "method": "GET",
+      "internalPath": "/crm/companies/:id"
+    },
+    "conversion.overview": {
+      "scope": "read",
+      "method": "GET",
+      "internalPath": "/conversion"
+    },
+    "conversion.events": {
+      "scope": "read",
+      "method": "GET",
+      "internalPath": "/conversion/events"
+    },
+    "reports.orion": {
+      "scope": "read",
+      "method": "GET",
+      "internalPath": "/reports/orion"
+    },
+    "integrations.state": {
+      "scope": "read",
+      "method": "GET",
+      "internalPath": "/state"
+    },
+    "messages.list": {
+      "scope": "read",
+      "method": "GET",
+      "internalPath": "/messaging/conversations"
+    },
+    "messages.detail": {
+      "scope": "read",
+      "method": "GET",
+      "internalPath": "/messaging/conversations/:id"
+    },
+    "audit.list": {
+      "scope": "read",
+      "method": "GET",
+      "internalPath": "bridge-audit"
+    },
+    "nexus.command": {
+      "scope": "control",
+      "method": "POST",
+      "internalPath": "/commands"
+    },
+    "nexus.order": {
+      "scope": "control",
+      "method": "POST",
+      "internalPath": "/crm/orders"
+    },
+    "task.approve": {
+      "scope": "control",
+      "method": "POST",
+      "internalPath": "/tasks/:id/approve"
+    },
+    "task.cancel": {
+      "scope": "control",
+      "method": "POST",
+      "internalPath": "/tasks/:id/cancel"
+    },
+    "workflow.approve": {
+      "scope": "control",
+      "method": "POST",
+      "internalPath": "/workflows/:id/approve"
+    },
+    "workflow.cancel": {
+      "scope": "control",
+      "method": "POST",
+      "internalPath": "/workflows/:id/cancel"
+    },
+    "order.approve": {
+      "scope": "control",
+      "method": "POST",
+      "internalPath": "/crm/orders/:id/approve"
+    },
+    "order.cancel": {
+      "scope": "control",
+      "method": "POST",
+      "internalPath": "/crm/orders/:id/cancel"
+    },
+    "employee.set": {
+      "scope": "control",
+      "method": "POST",
+      "internalPath": "/employees/:id"
+    },
+    "operations.set": {
+      "scope": "control",
+      "method": "POST",
+      "internalPath": "/operations"
+    },
+    "operations.stop": {
+      "scope": "control",
+      "method": "POST",
+      "internalPath": "/messaging/stop"
+    },
+    "crm.draft.review": {
+      "scope": "control",
+      "method": "POST",
+      "internalPath": "/crm/drafts/:id/review"
+    },
+    "message.review": {
+      "scope": "control",
+      "method": "POST",
+      "internalPath": "/messaging/drafts/:id/review"
+    }
+  }
+}

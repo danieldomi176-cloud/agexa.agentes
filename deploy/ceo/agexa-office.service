@@ -1,0 +1,28 @@
+# Deployment TEMPLATE: verify Node 22, paths, ownership and host secrets before use.
+[Unit]
+Description=AGEXA AI OFFICE persistent backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=agexa
+Group=agexa
+WorkingDirectory=/opt/agexa/agexa.agentes
+Environment=AGEXA_DATA_DIR=/var/lib/agexa
+EnvironmentFile=/etc/agexa/office.env
+ExecStart=/usr/bin/node dist/cli.js --agexa --host 127.0.0.1 --port 3100 --no-terminal
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+UMask=0077
+StateDirectory=agexa
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/agexa
+# This unit does not provision /run/secrets, DNS, TLS, a paid host, or Base44.
+
+[Install]
+WantedBy=multi-user.target

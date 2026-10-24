@@ -109,6 +109,15 @@ async function main() {
     copyAssets();
     buildHooks();
     await buildCli();
+    await esbuild.build({
+      entryPoints: ['server/src/hosted.ts'],
+      bundle: true,
+      platform: 'node',
+      target: 'node22',
+      format: 'cjs',
+      outfile: 'dist/hosted.js',
+      logLevel: 'silent',
+    });
     await buildUninstall();
   }
 }

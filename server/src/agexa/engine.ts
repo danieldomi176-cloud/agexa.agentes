@@ -316,6 +316,30 @@ export class SalesEngine extends EventEmitter {
     };
   }
 
+  listNexus(): { workflows: SalesWorkflow[]; orders: CommercialOrder[] } {
+    return { workflows: this.memory.workflows(), orders: this.crm.snapshot().orders };
+  }
+
+  listTasks(
+    status?: string,
+    page = 1,
+    employeeId?: string,
+    reportsOnly = false,
+  ): { items: SalesTask[]; total: number; page: number; pageSize: number } {
+    const where =
+      ' WHERE (? IS NULL OR status=?) AND (? IS NULL OR employeeId=?)' +
+      (reportsOnly ? " AND kind IN ('sales_report','crm_report','conversion_report')" : '');
+    const args = [status ?? null, status ?? null, employeeId ?? null, employeeId ?? null];
+    const total = Number(this.db.prepare('SELECT count(*) n FROM tasks' + where).get(...args)?.n);
+    const items = this.db
+      .prepare(
+        'SELECT id FROM tasks' + where + ' ORDER BY createdAt DESC,rowid DESC LIMIT 25 OFFSET ?',
+      )
+      .all(...args, (page - 1) * 25)
+      .map((row) => this.getTask(String(row.id)));
+    return { items, total, page, pageSize: 25 };
+  }
+
   create(input: CreateSalesTask): SalesTask {
     if (
       input.input?.crm !== undefined ||

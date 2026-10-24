@@ -64,6 +64,54 @@ export async function registerSalesRoutes(
         });
       });
       api.get('/state', async () => engine.snapshot());
+      api.get<{ Querystring: { status?: string; page?: number; employeeId?: string } }>(
+        '/tasks',
+        {
+          schema: {
+            querystring: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                status: {
+                  enum: [
+                    'queued',
+                    'running',
+                    'awaiting_approval',
+                    'blocked',
+                    'completed',
+                    'error',
+                    'cancelled',
+                  ],
+                },
+                page: { type: 'integer', minimum: 1, maximum: 100000 },
+                employeeId: {
+                  enum: ['nexus', 'hunter', 'atlas', 'maya', 'luna', 'victor', 'sophia', 'orion'],
+                },
+              },
+            },
+          },
+        },
+        async (req) =>
+          engine.listTasks(req.query.status, req.query.page ?? 1, req.query.employeeId),
+      );
+      api.get<{ Params: { id: string } }>('/tasks/:id', async (req) =>
+        engine.getTask(req.params.id),
+      );
+
+      api.get('/nexus', async () => engine.listNexus());
+      api.get<{ Querystring: { page?: number } }>(
+        '/reports/orion',
+        {
+          schema: {
+            querystring: {
+              type: 'object',
+              additionalProperties: false,
+              properties: { page: { type: 'integer', minimum: 1, maximum: 100000 } },
+            },
+          },
+        },
+        async (req) => engine.listTasks('completed', req.query.page ?? 1, 'orion', true),
+      );
       registerIntelligenceRoutes(api, engine);
       registerCrmRoutes(api, engine);
       registerMessagingRoutes(api, engine);

@@ -133,7 +133,10 @@
     "test:agexa:restore": "node scripts/agexa-restore-e2e.mjs",
     "base44:bundle": "node scripts/build-base44-functions.mjs",
     "base44:check": "node scripts/build-base44-functions.mjs --check",
-    "test:agexa:base44:e2e": "node scripts/agexa-base44-e2e.mjs"
+    "test:agexa:base44:e2e": "node scripts/agexa-base44-e2e.mjs",
+    "test:agexa:ceo:e2e": "node --import tsx scripts/agexa-ceo-api-e2e.mjs",
+    "start:hosted": "node dist/hosted.js",
+    "test:agexa:hosted:e2e": "node --import tsx scripts/agexa-ceo-api-e2e.mjs --hosted"
   },
   "devDependencies": {
     "@asyncapi/modelina": "^5.10.1",

@@ -6,6 +6,8 @@ import Fastify from 'fastify';
 
 import type { AgentRuntime } from './agentRuntime.js';
 import type { AgentStateStore } from './agentStateStore.js';
+import { type CeoConfig,ceoConfig } from './agexa/ceo/config.js';
+import { registerCeoRoutes } from './agexa/ceo/routes.js';
 import type { SalesEngine } from './agexa/engine.js';
 import { registerSalesRoutes } from './agexa/routes.js';
 import type {
@@ -34,6 +36,7 @@ import {
 /** Options for creating the HTTP + WebSocket server. */
 export interface HttpServerOptions {
   salesEngine?: SalesEngine;
+  ceoBridge?: CeoConfig | null;
   salesLayout?: Record<string, unknown> | null;
   /** true = VS Code embedded mode (ephemeral port, no static, quiet logging) */
   embedded: boolean;
@@ -90,7 +93,10 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
     bodyLimit: MAX_HOOK_BODY_SIZE,
   });
 
-  await app.register(fastifyCors, { origin: true });
+  await app.register(fastifyCors, {
+    delegator: (request, callback) =>
+      callback(null, { origin: request.url.startsWith('/api/ceo/') ? false : true }),
+  });
   await app.register(fastifyWebsocket);
 
   // Static SPA serving (standalone mode only)
@@ -118,6 +124,12 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
       layout: options.salesLayout ?? null,
       onLayout: (layout) => options.store.broadcast({ type: 'layoutLoaded', layout }),
     });
+    await registerCeoRoutes(
+      app,
+      options.salesEngine,
+      options.token,
+      options.ceoBridge === undefined ? ceoConfig() : options.ceoBridge,
+    );
     app.addHook('onClose', async () => {
       await options.salesEngine?.messaging.shutdown().catch(() => {});
       options.salesEngine?.close();

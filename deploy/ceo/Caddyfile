@@ -1,0 +1,24 @@
+# Deployment TEMPLATE. Supply your real DNS name; no production URL is invented.
+{$AGEXA_OFFICE_PUBLIC_HOST} {
+  header {
+    Strict-Transport-Security "max-age=31536000"
+    X-Content-Type-Options nosniff
+    Cache-Control "no-store, private"
+  }
+  @bridge {
+    path /api/ceo/v1/request
+    method POST
+  }
+  handle @bridge {
+    request_body {
+      max_size 32768
+    }
+    reverse_proxy 127.0.0.1:3100 {
+      header_up Host {host}
+      header_up X-Forwarded-Proto https
+    }
+  }
+  handle {
+    respond "Not found" 404
+  }
+}
