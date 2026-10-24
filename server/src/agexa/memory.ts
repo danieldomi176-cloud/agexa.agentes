@@ -36,7 +36,7 @@ export function validateKnowledge(value: AgexaKnowledge): void {
 export class CommercialMemory {
   constructor(private readonly db: DatabaseSync) {
     const version = Number(db.prepare('PRAGMA user_version').get()?.user_version ?? 0);
-    if (version > 2) throw new Error('Versão do banco mais recente que esta aplicação');
+    if (version > 3) throw new Error('Versão do banco mais recente que esta aplicação');
     db.exec('BEGIN IMMEDIATE');
     try {
       const existing = new Set(
@@ -60,7 +60,8 @@ export class CommercialMemory {
     taskId TEXT, kind TEXT NOT NULL, content TEXT NOT NULL, createdAt TEXT NOT NULL);
     CREATE INDEX IF NOT EXISTS tasks_workflow ON tasks(workflowId);
     CREATE INDEX IF NOT EXISTS tasks_queue ON tasks(status,employeeId);
-    PRAGMA user_version=2;`);
+    `);
+      if (version < 2) db.exec('PRAGMA user_version=2');
       db.exec('COMMIT');
     } catch (error) {
       db.exec('ROLLBACK');

@@ -2,18 +2,20 @@
 
 **Organização que trabalha por ti.**
 
-Extensão do Pixel Agents para o futuro escritório comercial do Agexa.
-A Fase 3 acrescenta um adaptador Ollama, instruções específicas para oito funcionários,
-memória operacional e planos Nexus sujeitos à aprovação do CEO. O escritório Pixel
-Agents, o editor e a fila SQLite das fases anteriores continuam preservados.
+O escritório comercial Agexa preserva o Pixel Agents, o editor e os oito funcionários.
+A Fase 4 acrescenta CRM persistente, importação CSV/listas autorizadas, qualificação,
+consentimento por canal, Kanban, versões de rascunhos, operações Nexus aprovadas pelo
+CEO e relatórios que distinguem simulações e confirmações manuais.
 
-**A inferência só fica disponível quando um serviço Ollama e um modelo instalado
-forem verificados. Nenhum modelo é descarregado automaticamente.** No ambiente desta
-implementação, Ollama não estava disponível: a integração multiagente foi validada
-contra uma API simulada, identificada como teste. Isto não comprova inferência real.
+**Sem Ollama, o CRM e as tarefas por regras funcionam.** Nesta instância não existe
+Ollama acessível: a integração IA foi testada com API simulada e não comprova
+inferência real. Nenhum modelo é descarregado automaticamente.
 
-A aplicação produz rascunhos internos; não envia mensagens nem faz scraping.
-Briefings, qualificação por regras e relatórios sem IA da Fase 2 continuam disponíveis.
+Não há envio de mensagens, WhatsApp ou integração de cadastro/pagamentos. A análise
+de websites tem proteções SSRF e está bloqueada pelo transporte de proxy desta nuvem;
+CSV e listas estão operacionais. Ver [fontes e limitações](docs/AGEXA_SOURCES.md).
+
+Ver [capturas desktop/mobile no GitHub](docs/screenshots/README.md).
 
 Ver [instalação e plano técnico](docs/AGEXA.md) e
 [requisitos fornecidos pelo CEO](docs/AGEXA_REQUIREMENTS.md).

@@ -6,6 +6,8 @@ import App from '../App.js';
 import type { SalesOffice } from '../hooks/useSalesOffice.js';
 import { useSalesOffice } from '../hooks/useSalesOffice.js';
 import { AgexaHeader } from './AgexaHeader.js';
+import type { CrmTab } from './CrmPanel.js';
+import { CrmPanel } from './CrmPanel.js';
 import { IntelligencePanel } from './IntelligencePanel.js';
 
 const statuses: Record<string, string> = {
@@ -150,7 +152,7 @@ function SalesPanel({
   const snapshot = office.snapshot!;
   const employee = snapshot.employees.find((e) => e.id === selected)!;
   const [tab, setTab] = useState<
-    'team' | 'tasks' | 'events' | 'intelligence' | 'nexus' | 'knowledge'
+    'team' | 'tasks' | 'events' | 'intelligence' | 'nexus' | 'knowledge' | CrmTab
   >('team');
   const [kind, setKind] = useState<TaskKind>('prepare_brief');
   const [objective, setObjective] = useState('');
@@ -161,6 +163,14 @@ function SalesPanel({
   const [localError, setLocalError] = useState('');
   const [filter, setFilter] = useState('all');
   const [recipient, setRecipient] = useState<EmployeeId>('atlas');
+  const commercialTab = [
+    'prospecting',
+    'crm',
+    'workspace',
+    'marketing',
+    'reports',
+    'commercial',
+  ].includes(tab);
   const ready = office.connection === 'connected' && !busy;
   const act = (route: string, body: unknown, done?: () => void): void => {
     setBusy(true);
@@ -175,7 +185,10 @@ function SalesPanel({
     (t) => t.employeeId === selected && (filter === 'all' || t.status === filter),
   );
   return (
-    <aside className="agexa-panel" aria-label="Painel privado do CEO">
+    <aside
+      className={`agexa-panel ${commercialTab ? 'agexa-commercial' : ''}`}
+      aria-label="Painel privado do CEO"
+    >
       <div className="agexa-panel-heading">
         <h2>Controlo CEO</h2>
         <button onClick={close} aria-label="Fechar painel">
@@ -200,6 +213,12 @@ function SalesPanel({
             ['intelligence', 'Central IA'],
             ['nexus', 'Nexus'],
             ['knowledge', 'Conhecimento'],
+            ['prospecting', 'Prospeção'],
+            ['crm', 'CRM'],
+            ['workspace', 'Sales Workspace'],
+            ['marketing', 'Marketing'],
+            ['reports', 'Relatórios'],
+            ['commercial', 'Comercial'],
           ] as const
         ).map(([value, label]) => (
           <button key={value} aria-pressed={tab === value} onClick={() => setTab(value)}>
@@ -212,42 +231,46 @@ function SalesPanel({
           {localError || office.error}
         </p>
       )}
-      <div className="agexa-team-grid">
-        {snapshot.employees.map((e) => (
-          <button
-            key={e.id}
-            aria-pressed={selected === e.id}
-            onClick={() => {
-              select(e.id);
-              setKind('prepare_brief');
-            }}
-          >
-            <strong>{e.name}</strong>
-            <small>{e.role}</small>
-            <span className={`agexa-status ${e.status}`}>{statuses[e.status]}</span>
-          </button>
-        ))}
-      </div>
-      <section className="agexa-employee-details">
-        <h3>
-          {employee.name} · {employee.role}
-        </h3>
-        <p>{employee.area} · lugar permanente</p>
-        <p>
-          {employee.completed} concluídas · {employee.queued} na fila · {employee.errors} erros
-        </p>
-        <p>
-          Tarefa atual:{' '}
-          {snapshot.tasks.find((t) => t.id === employee.currentTask)?.objective ??
-            'Sem tarefa em execução'}
-        </p>
-        <button
-          disabled={!ready}
-          onClick={() => act(`employees/${employee.id}`, { enabled: !employee.enabled })}
-        >
-          {employee.enabled ? 'Pausar' : 'Iniciar'} {employee.name}
-        </button>
-      </section>
+      {!commercialTab && (
+        <>
+          <div className="agexa-team-grid">
+            {snapshot.employees.map((e) => (
+              <button
+                key={e.id}
+                aria-pressed={selected === e.id}
+                onClick={() => {
+                  select(e.id);
+                  setKind('prepare_brief');
+                }}
+              >
+                <strong>{e.name}</strong>
+                <small>{e.role}</small>
+                <span className={`agexa-status ${e.status}`}>{statuses[e.status]}</span>
+              </button>
+            ))}
+          </div>
+          <section className="agexa-employee-details">
+            <h3>
+              {employee.name} · {employee.role}
+            </h3>
+            <p>{employee.area} · lugar permanente</p>
+            <p>
+              {employee.completed} concluídas · {employee.queued} na fila · {employee.errors} erros
+            </p>
+            <p>
+              Tarefa atual:{' '}
+              {snapshot.tasks.find((t) => t.id === employee.currentTask)?.objective ??
+                'Sem tarefa em execução'}
+            </p>
+            <button
+              disabled={!ready}
+              onClick={() => act(`employees/${employee.id}`, { enabled: !employee.enabled })}
+            >
+              {employee.enabled ? 'Pausar' : 'Iniciar'} {employee.name}
+            </button>
+          </section>
+        </>
+      )}
       {tab === 'team' && (
         <>
           <form
@@ -466,6 +489,7 @@ function SalesPanel({
       {(tab === 'intelligence' || tab === 'nexus' || tab === 'knowledge') && (
         <IntelligencePanel office={office} tab={tab} act={act} ready={ready} />
       )}
+      {commercialTab && <CrmPanel office={office} tab={tab as CrmTab} act={act} ready={ready} />}
     </aside>
   );
 }

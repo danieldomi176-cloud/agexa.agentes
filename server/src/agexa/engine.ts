@@ -13,6 +13,7 @@ import type {
   SalesTask,
 } from '../../../core/src/agexa.js';
 import { EMPLOYEES, SALES_OBJECTIVE, salesCharacterId } from '../../../core/src/agexa.js';
+import type { CommercialOrder, SalesDraft } from '../../../core/src/crm.js';
 import type {
   AgexaKnowledge,
   IntelligenceConfig,
@@ -20,8 +21,18 @@ import type {
   SalesWorkflow,
 } from '../../../core/src/intelligence.js';
 import { PLAN_ORDER } from '../../../core/src/intelligence.js';
+import {
+  crmInput,
+  draftKind,
+  executeImport,
+  modelCompany,
+  preparedDraft,
+} from './crm/operations.js';
+import { CrmError, CrmStore } from './crm/store.js';
+import { normalize } from './crm/validation.js';
 import { CommercialMemory } from './memory.js';
 import { OllamaInferenceAdapter } from './ollama.js';
+import { validateOperationalResult } from './prompts.js';
 
 export class SalesError extends Error {
   constructor(
@@ -50,6 +61,7 @@ export class SalesEngine extends EventEmitter {
   private readonly db: DatabaseSync;
   private readonly lock: string;
   private readonly memory: CommercialMemory;
+  readonly crm: CrmStore;
   private readonly inference: InferenceAdapter;
   private healthTimer: ReturnType<typeof setInterval> | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -84,6 +96,7 @@ export class SalesEngine extends EventEmitter {
         INSERT OR IGNORE INTO settings VALUES ('suspended','0');
         `);
       this.memory = new CommercialMemory(this.db);
+      this.crm = new CrmStore(this.db);
       // Tests and the original phase-two API may explicitly inject another adapter.
       this.inference = inference ?? new DisconnectedInference();
       if (this.inference instanceof OllamaInferenceAdapter) {
@@ -225,6 +238,7 @@ export class SalesEngine extends EventEmitter {
     });
     return {
       version: 1,
+      crm: this.crm.snapshot(),
       suspended: this.suspended,
       ...(this.inference instanceof OllamaInferenceAdapter
         ? {
@@ -243,7 +257,7 @@ export class SalesEngine extends EventEmitter {
         message: this.inference.connected
           ? 'Fornecedor ligado'
           : this.inference instanceof OllamaInferenceAdapter
-            ? (this.inference.status.error ?? 'Ollama indisponível')
+            ? `Inferência indisponível. CRM e tarefas por regras continuam operacionais. ${this.inference.status.error ?? 'Ollama não está ligado.'}`
             : 'Configurados, sem inferência real. Ollama depende da Fase 3.',
       },
       employees,
@@ -256,6 +270,8 @@ export class SalesEngine extends EventEmitter {
   }
 
   create(input: CreateSalesTask): SalesTask {
+    if (input.input?.crm !== undefined)
+      throw new SalesError('Metadados CRM reservados às ferramentas comerciais autorizadas', 400);
     this.validate(input);
     if (
       Number(
@@ -274,7 +290,20 @@ export class SalesEngine extends EventEmitter {
   private validate(input: CreateSalesTask): void {
     if (!EMPLOYEES.some((e) => e.id === input.employeeId))
       throw new SalesError('Funcionário inválido', 400);
-    if (!['prepare_brief', 'qualify_company', 'sales_report', 'ai_request'].includes(input.kind))
+    if (
+      ![
+        'prepare_brief',
+        'qualify_company',
+        'sales_report',
+        'ai_request',
+        'crm_import',
+        'crm_qualify',
+        'crm_prepare',
+        'crm_report',
+        'crm_plan',
+        'crm_summary',
+      ].includes(input.kind)
+    )
       throw new SalesError('Operação não permitida', 400);
     if (input.kind === 'qualify_company' && input.employeeId !== 'atlas')
       throw new SalesError('Qualificação pertence ao Atlas', 400);
@@ -349,6 +378,12 @@ export class SalesEngine extends EventEmitter {
   private markCancelled(id: string, error: string | null): void {
     const task = this.getTask(id);
     this.active.get(id)?.abort();
+    if (task.kind === 'crm_import' && task.input.batchId)
+      this.crm.finishBatch(
+        String(task.input.batchId),
+        { error: 'Cancelada pelo CEO' },
+        'cancelled',
+      );
     const duration = task.startedAt ? Math.max(0, Date.now() - Date.parse(task.startedAt)) : null;
     this.db
       .prepare(
@@ -415,6 +450,438 @@ export class SalesEngine extends EventEmitter {
     });
     this.changed();
     return result;
+  }
+
+  notifyCrm(): void {
+    this.changed();
+  }
+  private commercialTask(
+    request: CreateSalesTask,
+    dependencies: string[] = [],
+    orderId?: string,
+    companyId?: string,
+  ): SalesTask {
+    if (
+      Number(
+        this.db
+          .prepare(
+            "SELECT count(*) as n FROM tasks WHERE status IN ('queued','blocked','awaiting_approval','running')",
+          )
+          .get()?.n,
+      ) >= 100
+    )
+      throw new CrmError('Fila cheia', 409);
+    this.validate(request);
+    const task = this.insert(request);
+    this.db
+      .prepare("UPDATE tasks SET dependencyIds=?,stage='work' WHERE id=?")
+      .run(JSON.stringify(dependencies), task.id);
+    this.db.prepare('UPDATE employees SET enabled=1 WHERE id=?').run(request.employeeId);
+    if (orderId) this.crm.assign(orderId, task.id, request.employeeId, companyId ?? null);
+    return this.getTask(task.id);
+  }
+  queueCrmImport(sourceId: string, payload: Record<string, unknown>): SalesTask {
+    if (payload.authorized !== true || payload.businessOnly !== true)
+      throw new CrmError('Confirmar autorização e utilização exclusiva de dados empresariais');
+    if (
+      Number(
+        this.db
+          .prepare(
+            "SELECT count(*) as n FROM tasks WHERE status IN ('queued','blocked','awaiting_approval','running')",
+          )
+          .get()?.n,
+      ) >= 100
+    )
+      throw new CrmError('Fila cheia', 409);
+    const task = this.transaction(() => {
+      const batchId = this.crm.createBatch(sourceId, payload);
+      const task = this.commercialTask({
+        employeeId: 'hunter',
+        kind: 'crm_import',
+        objective: 'Importar/analisar empresas de uma fonte autorizada',
+        input: { authorized: true, batchId },
+      });
+      this.crm.activity(
+        'research_requested',
+        'Operação autorizada pelo CEO; não autoriza contacto',
+        null,
+        task.id,
+      );
+      return task;
+    });
+    this.changed();
+    return task;
+  }
+  queueCrmWork(
+    companyId: string,
+    employeeId: EmployeeId,
+    useAI: boolean,
+    objection?: string,
+  ): SalesTask {
+    this.crm.company(companyId);
+    if (!['atlas', 'maya', 'luna', 'victor', 'sophia'].includes(employeeId))
+      throw new CrmError('Operação comercial não disponível para este funcionário');
+    const request: CreateSalesTask = {
+      employeeId,
+      kind: useAI ? 'ai_request' : employeeId === 'atlas' ? 'crm_qualify' : 'crm_prepare',
+      objective: `${employeeId}: analisar/preparar material da empresa ${this.crm.company(companyId).name}`,
+      input: {
+        authorized: true,
+        crm: { op: employeeId === 'atlas' ? 'qualify_ai' : 'draft', companyId },
+        companyIds: [companyId],
+        objection: objection ?? '',
+      },
+    };
+    const task = this.transaction(() => this.commercialTask(request));
+    this.changed();
+    return task;
+  }
+  saveManualDraft(
+    companyId: string,
+    employeeId: EmployeeId,
+    kind: SalesDraft['kind'],
+    body: string,
+  ): SalesDraft {
+    const task = { employeeId, stage: null } as SalesTask;
+    validateOperationalResult(
+      { summary: 'Rascunho manual do CEO', draft: body, observations: [], nextActions: [] },
+      task,
+      this.memory.knowledge(),
+    );
+    const draft = this.crm.addDraft(companyId, employeeId, kind, body, 'manual', null);
+    this.changed();
+    return draft;
+  }
+  moveCrm(
+    companyId: string,
+    stage: Parameters<CrmStore['move']>[1],
+    verification?: Parameters<CrmStore['move']>[2],
+  ): void {
+    this.crm.move(companyId, stage, verification, this.memory.knowledge());
+    this.changed();
+  }
+  prepareHandoff(companyId: string): Record<string, unknown> {
+    const handoff = this.crm.handoff(companyId, this.memory.knowledge());
+    this.changed();
+    return handoff;
+  }
+  createCommercialOrder(
+    goal: string,
+    sourceId: string,
+    sector: string,
+    city: string,
+    useAI: boolean,
+  ): CommercialOrder {
+    if (this.suspended) throw new CrmError('Retomar operações antes de pedir uma pesquisa', 409);
+    const source = this.crm.source(sourceId);
+    if (!source.enabled) throw new CrmError('Fonte pausada');
+    if (!goal.trim() || goal.length > 2000 || sector.length > 100 || city.length > 100)
+      throw new CrmError('Objetivo e filtros inválidos');
+    const pending = this.crm
+      .orders()
+      .filter((o) => ['proposed', 'running'].includes(o.status)).length;
+    if (pending >= 5) throw new CrmError('Limite de cinco ordens comerciais pendentes', 409);
+    const order = this.transaction(() => {
+      const id = randomUUID();
+      const config = this.memory.config();
+      const task = this.commercialTask({
+        employeeId: 'nexus',
+        kind: useAI ? 'ai_request' : 'crm_plan',
+        objective: goal,
+        input: {
+          authorized: true,
+          crm: { op: 'plan', orderId: id },
+          source: { id: source.id, name: source.name, kind: source.kind },
+          sector,
+          city,
+        },
+      });
+      this.db.prepare("UPDATE tasks SET stage='plan' WHERE id=?").run(task.id);
+      const order: CommercialOrder = {
+        id,
+        goal,
+        sourceId,
+        sector,
+        city,
+        useAI,
+        status: 'proposed',
+        planTaskId: task.id,
+        taskBudget: config.maxTasks,
+        inferenceBudget: config.maxInferences,
+        createdAt: now(),
+      };
+      this.crm.saveOrder(order);
+      this.crm.assign(id, task.id, 'nexus');
+      this.crm.activity(
+        'commercial_plan_requested',
+        'Plano proposto; exige aprovação para distribuir tarefas',
+        null,
+        task.id,
+        'nexus',
+      );
+      return order;
+    });
+    this.changed();
+    return order;
+  }
+  approveCommercialOrder(id: string): void {
+    this.transaction(() => {
+      const order = this.crm.order(id);
+      if (order.status !== 'proposed' || this.getTask(order.planTaskId).status !== 'completed')
+        throw new CrmError('Plano ainda não concluído ou já aprovado', 409);
+      if (this.suspended) throw new CrmError('Operações suspensas', 409);
+      const hunter = this.commercialTask(
+        {
+          employeeId: 'hunter',
+          kind: 'crm_plan',
+          objective:
+            'Pesquisar os registos empresariais autorizados da fonte, sem alegar nova pesquisa online',
+          input: { authorized: true, crm: { op: 'discover', orderId: id } },
+        },
+        [order.planTaskId],
+        id,
+      );
+      this.commercialTask(
+        {
+          employeeId: 'atlas',
+          kind: 'crm_qualify',
+          objective: 'Qualificar empresas encontradas com critérios transparentes',
+          input: {
+            authorized: true,
+            crm: { op: 'qualify_batch', orderId: id },
+            discoveryTaskId: hunter.id,
+          },
+        },
+        [hunter.id],
+        id,
+      );
+      this.crm.setOrder(id, 'running');
+      this.crm.activity(
+        'commercial_plan_approved',
+        'CEO aprovou pesquisa nos registos e preparação interna',
+        null,
+        order.planTaskId,
+        'CEO',
+      );
+    });
+    this.changed();
+  }
+  cancelCommercialOrder(id: string): void {
+    this.transaction(() => {
+      const order = this.crm.order(id);
+      if (['completed', 'cancelled'].includes(order.status))
+        throw new CrmError('Ordem terminada', 409);
+      for (const assignment of this.crm.assignments(id)) {
+        const task = this.getTask(assignment.taskId);
+        if (!['completed', 'error', 'cancelled'].includes(task.status))
+          this.markCancelled(task.id, 'Ordem comercial cancelada pelo CEO');
+      }
+      this.crm.setOrder(id, 'cancelled');
+      this.crm.activity('commercial_order_cancelled', id);
+    });
+    this.changed();
+  }
+  private expandCommercialOrder(
+    orderId: string,
+    qualificationTask: SalesTask,
+    result: Record<string, unknown>,
+  ): void {
+    const row = this.db.prepare('SELECT expanded FROM crm_orders WHERE id=?').get(orderId);
+    if (row?.expanded) return;
+    const order = this.crm.order(orderId);
+    const config = this.memory.config();
+    const perLead = order.useAI ? 5 : 4;
+    const limit = Math.max(
+      0,
+      Math.min(
+        this.crm.settings().maxCampaignLeads,
+        Math.floor((Math.min(order.taskBudget, config.maxTasks) - 5) / perLead),
+        order.useAI
+          ? Math.floor((Math.min(order.inferenceBudget, config.maxInferences) - 2) / 5)
+          : 3,
+      ),
+    );
+    const ids = ((result.companyIds as string[]) ?? [])
+      .map((id) => this.crm.company(id))
+      .filter((c) => c.score !== null && c.score >= this.crm.settings().qualificationThreshold)
+      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+      .slice(0, limit)
+      .map((c) => c.id);
+    this.db.prepare('UPDATE crm_orders SET expanded=1 WHERE id=?').run(orderId);
+    const endings: string[] = [];
+    for (const companyId of ids) {
+      let prior = qualificationTask.id;
+      for (const employeeId of (order.useAI
+        ? ['atlas', 'maya', 'luna', 'victor', 'sophia']
+        : ['maya', 'luna', 'victor', 'sophia']) as EmployeeId[]) {
+        const task = this.commercialTask(
+          {
+            employeeId,
+            kind: order.useAI ? 'ai_request' : 'crm_prepare',
+            objective: `${employeeId}: material interno para ${this.crm.company(companyId).name}`,
+            input: {
+              authorized: true,
+              crm: { op: employeeId === 'atlas' ? 'qualify_ai' : 'draft', orderId, companyId },
+            },
+          },
+          [prior],
+          orderId,
+          companyId,
+        );
+        prior = task.id;
+      }
+      endings.push(prior);
+    }
+    const report = this.commercialTask(
+      {
+        employeeId: 'orion',
+        kind: 'crm_report',
+        objective: 'Relatório de dados comerciais registados, sem inventar envios ou conversões',
+        input: { authorized: true, crm: { op: 'report', orderId } },
+      },
+      endings.length ? endings : [qualificationTask.id],
+      orderId,
+    );
+    const final = this.commercialTask(
+      {
+        employeeId: 'nexus',
+        kind: order.useAI ? 'ai_request' : 'crm_summary',
+        objective: 'Síntese comercial para o CEO com resultados verificados e limites',
+        input: { authorized: true, crm: { op: 'summary', orderId } },
+      },
+      [report.id],
+      orderId,
+    );
+    this.db.prepare("UPDATE tasks SET stage='summary' WHERE id=?").run(final.id);
+    this.crm.activity(
+      'commercial_materials_assigned',
+      `${ids.length} empresas dentro do orçamento; nenhuma empresa inventada`,
+      null,
+      qualificationTask.id,
+      'nexus',
+    );
+  }
+  private commercialOperation(
+    task: SalesTask,
+    signal: AbortSignal,
+  ): Record<string, unknown> | Promise<Record<string, unknown>> {
+    const input = crmInput(task);
+    if (task.kind === 'crm_import') return executeImport(this.crm, task, signal);
+    if (task.kind === 'crm_plan') {
+      const order = input.orderId ? this.crm.order(input.orderId) : null;
+      if (input.op === 'discover' && order) {
+        const source = this.crm.source(order.sourceId);
+        if (!source.enabled) throw new CrmError('Fonte pausada');
+        this.crm.reserveSourceUse(source.id, task.id, 'search_imported_records');
+        const rows: { id: string }[] = [];
+        for (const row of this.db
+          .prepare('SELECT id,sector,city FROM crm_companies WHERE sourceId=? ORDER BY rowid')
+          .iterate(order.sourceId)) {
+          if (
+            (!order.city || normalize(String(row.city)) === normalize(order.city)) &&
+            (!order.sector || normalize(String(row.sector)).includes(normalize(order.sector)))
+          )
+            rows.push({ id: String(row.id) });
+          if (rows.length >= this.crm.settings().maxImportRows) break;
+        }
+        return {
+          companyIds: rows.map((c) => c.id),
+          sourceId: order.sourceId,
+          inference: false,
+          summary: `Hunter: ${rows.length} empresas nos registos autorizados importados; nenhuma pesquisa online alegada.`,
+        };
+      }
+      return {
+        inference: false,
+        summary: 'Plano operacional por regras; aguarda aprovação do CEO.',
+        availableSources: this.crm
+          .sources()
+          .filter((s) => s.enabled)
+          .map((s) => ({ id: s.id, name: s.name, kind: s.kind })),
+        steps: [
+          'Hunter: registos da fonte autorizada',
+          'Atlas: qualificação por regras',
+          'Maya: abordagem interna',
+          'Luna: simulação identificada',
+          'Victor: objeções',
+          'Sophia: convite condicionado à oferta',
+          'Orion: relatório',
+          'Nexus: síntese',
+        ],
+        externalMessagesSent: 0,
+      };
+    }
+    if (task.kind === 'crm_qualify') {
+      const ids = task.input.discoveryTaskId
+        ? ((this.getTask(String(task.input.discoveryTaskId)).result?.companyIds as string[]) ?? [])
+        : ((task.input.companyIds as string[]) ?? []);
+      if (!Array.isArray(ids) || ids.length > 200)
+        throw new CrmError('Lista de qualificação inválida');
+      const qualifications = ids.map((id) => this.crm.qualify(id, task.id));
+      return {
+        companyIds: ids,
+        qualifications,
+        inference: false,
+        summary: `Atlas: ${ids.length} empresas avaliadas; consentimento tratado separadamente.`,
+      };
+    }
+    if (task.kind === 'crm_prepare') {
+      if (!input.companyId) throw new CrmError('Empresa não indicada');
+      return preparedDraft(task, this.crm.company(input.companyId), this.memory.knowledge());
+    }
+    return {
+      inference: false,
+      summary:
+        task.kind === 'crm_report'
+          ? 'Orion: relatório baseado nos registos persistentes.'
+          : 'Nexus: operação comercial concluída; materiais internos sujeitos a revisão.',
+      analytics: this.crm.analytics(),
+      externalMessagesSent: 0,
+      crmOrderId: input.orderId,
+    };
+  }
+  private commercialCompleted(
+    task: SalesTask,
+    result: Record<string, unknown> | null,
+    error: string | null,
+  ): void {
+    const input = crmInput(task);
+    if (task.kind === 'crm_import' && task.input.batchId)
+      this.crm.finishBatch(
+        String(task.input.batchId),
+        result ?? { error },
+        error ? 'error' : 'completed',
+      );
+    if (error) {
+      if (input.orderId && this.crm.order(input.orderId).status !== 'cancelled')
+        this.crm.setOrder(input.orderId, 'error');
+      return;
+    }
+    if (input.companyId && result) {
+      if (input.op === 'qualify_ai') this.crm.aiQualification(input.companyId, task.id, result);
+      else if (input.op === 'draft' && typeof result.draft === 'string' && result.draft.trim())
+        this.crm.addDraft(
+          input.companyId,
+          task.employeeId,
+          draftKind(task.employeeId),
+          result.draft,
+          result.executionMode === 'test' ? 'test' : result.inference === true ? 'ollama' : 'rules',
+          task.id,
+        );
+      if (task.employeeId === 'sophia') this.crm.handoff(input.companyId, this.memory.knowledge());
+    }
+    if (input.orderId && task.kind === 'crm_qualify' && result)
+      this.expandCommercialOrder(input.orderId, task, result);
+    if (input.orderId && task.stage === 'summary') {
+      this.crm.setOrder(input.orderId, 'completed');
+      this.crm.activity(
+        'commercial_order_completed',
+        'Operação interna concluída; nenhum contacto externo enviado',
+        null,
+        task.id,
+        'nexus',
+      );
+    }
   }
 
   async refreshIntelligence(): Promise<void> {
@@ -606,6 +1073,11 @@ export class SalesEngine extends EventEmitter {
   private resolveDependencies(): void {
     let updated = false;
     this.transaction(() => {
+      this.db
+        .prepare(
+          `UPDATE crm_orders SET status='error' WHERE status IN ('proposed','running') AND EXISTS(SELECT 1 FROM crm_assignments a JOIN tasks t ON t.id=a.taskId WHERE a.orderId=crm_orders.id AND t.status IN ('error','cancelled'))`,
+        )
+        .run();
       const failed = this.db
         .prepare(
           `UPDATE workflows SET status='error' WHERE status IN ('planning','proposed','running') AND EXISTS (
@@ -690,6 +1162,17 @@ export class SalesEngine extends EventEmitter {
         revenue: null,
       },
     };
+    const crm = crmInput(task);
+    if (crm.companyId) input.crmCompany = modelCompany(this.crm.company(crm.companyId));
+    if (crm.orderId && task.stage === 'summary')
+      input.crmResults = this.crm
+        .assignments(crm.orderId)
+        .map((a) => this.getTask(a.taskId))
+        .filter((t) => t.status === 'completed')
+        .map((t) => ({
+          employee: t.employeeId,
+          summary: String(t.result?.summary ?? '').slice(0, 500),
+        }));
     const memories = this.memory
       .recent(task.employeeId)
       .slice(0, 4)
@@ -763,13 +1246,18 @@ export class SalesEngine extends EventEmitter {
   private async execute(task: SalesTask, signal: AbortSignal): Promise<void> {
     const started = performance.now();
     try {
-      const result =
-        task.kind === 'ai_request'
-          ? await this.inference.run(this.inferenceTask(task), {
-              signal,
-              objective: SALES_OBJECTIVE,
-            })
+      let result: Record<string, unknown>;
+      if (task.kind === 'ai_request')
+        result = await this.inference.run(this.inferenceTask(task), {
+          signal,
+          objective: SALES_OBJECTIVE,
+        });
+      else {
+        const operation = task.kind.startsWith('crm_')
+          ? this.commercialOperation(task, signal)
           : this.structuredOperation(task);
+        result = operation instanceof Promise ? await operation : operation;
+      }
       if (!signal.aborted && !this.closed)
         this.finish(
           task,
@@ -810,6 +1298,7 @@ export class SalesEngine extends EventEmitter {
           typeof result?.durationMs === 'number' ? result.durationMs : (durationMs ?? null),
           task.id,
         );
+      this.commercialCompleted(task, result, error);
       if (!error && typeof result?.summary === 'string')
         this.memory.add('summary', result.summary.slice(0, 2000), task.employeeId, task.id);
       if (task.workflowId) {

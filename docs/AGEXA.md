@@ -553,3 +553,235 @@ ser passos distintos da validação deste processo.
 - `webview-ui/src/components/IntelligencePanel.tsx`
 - `webview-ui/src/index.css`
 - `webview-ui/src/testHooks.ts`
+
+## Fase 4 — CRM, prospeção autorizada e operações comerciais
+
+Implementada sobre `agexa/phase-3`, preservando o commit de referência
+`c878a9f19823e31e8176901778b92dbf72663026` e o commit posterior de capturas
+`adf1140edfa12cd4428376e2ae7d071ba67573b2`. A branch de entrega é
+`agexa/phase-4`; as branches anteriores continuam intactas.
+
+O escritório original, os oito funcionários, a ponte de eventos, o editor,
+a autenticação por token e o motor SQLite continuam a ser usados. As novas
+animações correspondem aos estados de tarefas reais; tarefas de importação ou
+regras são trabalho do backend, **não inferência IA**. Não há animações programadas
+para representar inferência inexistente.
+
+### O que funciona e como utilizar
+
+1. Iniciar com os comandos da secção de instalação. Abrir o acesso administrativo
+   mostrado pelo servidor; nunca publicar esse URL. A API CRM exige o token e
+   mantém as proteções de Host/Origin anteriores.
+2. Em **Prospeção**, adicionar uma fonte CSV, lista manual ou website. Identificar
+   origem/evidência, atribuição, termos e permissão de reutilização comercial.
+   Uma caixa marcada regista a confirmação do CEO; o sistema não verifica uma
+   licença por si só. Pode pausar a fonte posteriormente.
+3. Escolher a fonte, carregar um CSV ou colar a lista JSON empresarial. Confirmar
+   autorização e uso apenas de dados empresariais necessários. Marcar **simulação**
+   quando forem fixtures; essa classificação fica associada ao registo.
+4. **Executar Hunter** cria uma tarefa persistente. O lote apresenta estado,
+   resultado, IDs, duplicados e erros. Uma lista inválida não fica parcialmente
+   importada. Duplicados preservam IDs e dados anteriores.
+5. Em **CRM**, alternar tabela/Kanban, filtrar e abrir a ficha. Consultar fonte,
+   data, necessidades, próxima ação e histórico; editar dados empresariais e
+   factos conhecidos. Campos desconhecidos permanecem desconhecidos.
+6. **Qualificar com Atlas** executa regras sem IA. A opção IA produz narrativa
+   separada quando Ollama estiver operacional, sem substituir a pontuação por
+   regras. A nota de adequação e a elegibilidade de contacto são independentes.
+7. Na ficha, preparar abordagem Maya, simulação Luna, objeções Victor ou convite
+   Sophia. Regras produzem materiais identificados; IA requer serviço/modelo
+   verificados. Sem funcionalidades confirmadas, Maya produz briefing em vez de
+   mensagem pronta. Sem URL e oferta confirmados, Sophia produz checklist.
+8. Em **Marketing**, consultar versões por oportunidade, comparar textos, criar
+   versões manuais e aprovar/rejeitar. Aprovar não envia nada. Versões de contacto
+   externo exigem consentimento ativo para aprovação. Rascunhos vindos de servidor
+   de teste ficam em modo `test` e não entram nas métricas de materiais reais.
+9. Em **Comercial**, guardar funcionalidades, URL oficial, oferta de 7 dias,
+   preços/políticas aprovados e limites. Os nomes lógicos `AGEXA_SIGNUP_URL`,
+   `AGEXA_FREE_TRIAL_ENABLED` e `AGEXA_FREE_TRIAL_DAYS=7` correspondem à base
+   administrativa já existente (`knowledge`); não são variáveis de ambiente lidas
+   automaticamente. Não duplicamos nem presumimos essa configuração.
+10. Em **Sales Workspace**, introduzir o objetivo Nexus, fonte e filtros explícitos
+    de setor/cidade. Por exemplo: objetivo “Preparar oportunidades na Beira”,
+    setor “barbearia”, cidade “Beira”. O texto livre orienta o plano, mas a seleção
+    por regras usa os filtros do formulário; não interpreta geografia por IA.
+    Nexus propõe um plano e aguarda **Aprovar operação comercial**. Hunter pesquisa
+    registos já importados da fonte; não alega encontrar empresas novas online.
+    Para descobrir novos dados, executar primeiro uma importação autorizada.
+
+### CSV e listas
+
+CSV UTF-8, com cabeçalho, vírgula como separador e aspas segundo RFC 4180.
+Aceita BOM, campos citados, vírgulas/quebras de linha dentro de aspas e `""`.
+Máximo 48.000 bytes, 30 colunas e 200 empresas por lote (ou limite menor do CEO).
+Cabeçalhos desconhecidos/duplicados, colunas inconsistentes e booleanos inválidos
+são recusados. Campos opcionais vazios não são inventados.
+
+```csv
+name,sector,city,province,country,website,contactChannel,businessContact,needs,usesAppointments,organizationNeed,hasSchedulingSystem,sufficientInfo
+Empresa autorizada,barbearia,Beira,Sofala,Moçambique,,none,,Organizar horários,true,true,false,true
+```
+
+Esse exemplo é apenas formato, não uma empresa pesquisada. Campos aceites:
+`name` (obrigatório), `sector`, `city`, `province`, `country`, `website`,
+`businessPage`, `contactChannel`, `businessContact`, `needs`, `nextAction`,
+`usesAppointments`, `organizationNeed`, `hasSchedulingSystem`, `sufficientInfo`.
+Existem aliases portugueses, incluindo `nome`, `empresa`, `setor`, `cidade`,
+`provincia`, `pais`; preferir os nomes canónicos acima. Booleanos: `true/false`,
+`sim/não` (também `nao`). Canais: `none`, `website`, `email`, `whatsapp`, `business_phone`.
+Um canal WhatsApp guardado é apenas dado empresarial; não cria ligação ou envio.
+
+Listas manuais usam um array JSON com os mesmos campos. Para website, usar objeto
+com `name` e `website` da mesma origem da fonte. Ver as restrições de transporte em
+[AGEXA_SOURCES.md](AGEXA_SOURCES.md). Não há conector de diretório remoto ativo.
+
+Deduplicação: nome/cidade/país normalizados ou mesmo website e cidade. Não faz
+fusão automática nem substitui dados anteriores. O CEO deve resolver diferenças
+reais de empresas com nomes semelhantes. Exportação CSV até 5.000 registos,
+com origem, atribuição e modo; fórmulas de folha de cálculo são neutralizadas.
+O contacto empresarial não é incluído nesse export.
+
+### Qualificação, consentimento e pipeline
+
+Regras CRM: marcações 30, setor prioritário 20, necessidade de organização 20,
+ausência confirmada de sistema 10, informação suficiente 10, Moçambique explícito
+10. Desconhecido soma zero. O limiar padrão é 60. As regras autónomas da Fase 2
+foram preservadas; esta avaliação CRM é nova e tem histórico próprio. Alterações
+de factos/setor invalidam a classificação anterior até nova avaliação.
+
+Consentimento é um registo separado e auditável, por canal, com origem/evidência,
+concessão/revogação/recusa. Publicação de telefone não equivale a consentimento.
+Trocar o contacto empresarial exige novo consentimento. Uma pontuação 100 não
+habilita contactos sem autorização.
+
+As 13 etapas pedidas são persistidas. `qualified` requer nota suficiente;
+`authorized` requer consentimento; `prepared` requer consentimento e abordagem
+aprovada. Simulações Luna e rascunhos não avançam para conversa, interesse ou envio.
+
+Conversa, interesse, link enviado, entrega ao CEO, conta, teste e pagamento exigem
+**confirmação manual independente**, evidência e data válida. Ficam auditadas como
+confirmações manuais do CEO, não como eventos automáticos do WhatsApp/Base44.
+Registos simulados não podem receber essas confirmações reais. Interesse e link
+exigem conversa confirmada; link exige interesse e oferta/URL confirmados; entrega
+ao CEO exige link confirmado. Teste exige oferta ativa. Não há integração que
+valide contas, pagamentos ou a veracidade da declaração humana.
+
+Handoff guarda resumo, necessidades, contacto autorizado, estado da conversa/link,
+URL e roteiros preparados de objeções (não são objeções ou falas reais do cliente).
+O registo criado é sempre `prepared`, nunca transferência concluída automaticamente.
+
+### Colaboração, limites e relatórios
+
+Cada operação Nexus cria IDs e dependências reais: plano → Hunter → Atlas →
+materiais por empresa → Orion → síntese Nexus. Hunter/Atlas executam operações de
+dados, Orion calcula métricas; os restantes usam regras ou inferência explicitamente
+selecionada. Sem resultados, cria relatório e síntese sem materiais fictícios.
+
+Orçamento padrão da Fase 3: 12 tarefas e 10 inferências. Permite preparar materiais
+para uma empresa por operação (9 tarefas por regras, ou 10 tarefas/7 pedidos ao
+modelo no modo IA). Limites administrativos permitem até 3 empresas, se o orçamento
+comportar. Seleção por nota, sem inventar oportunidades para ocupar funcionários.
+Há no máximo cinco ordens pendentes, limite global de fila e utilização de fonte
+por hora. Limites do motor continuam a aplicar-se na expansão da ordem.
+
+Pausar funcionário, suspender operações e cancelar ordem atuam no motor existente,
+com cancelamento de execução e dependências. Reinício conserva tarefas/resultados;
+interrupções são tratadas pelo mecanismo de recuperação anterior. Erros permanecem
+visíveis e uma etapa falhada não gera sucessos artificiais a jusante.
+
+Relatórios separam empresas importadas/fornecidas/observadas de simulações.
+Materiais internos e versões aprovadas não contam como mensagens enviadas.
+Contas/testes/pagantes só contam confirmações manuais independentes; sem registos
+verificados mostram **Não disponível**. Envios e receita ficam indisponíveis sem
+integração. Gráficos de agentes medem tarefas operacionais, incluindo tarefas de
+teste; não são produtividade comercial real nem prova de inferência.
+
+A tabela/Kanban pagina 50 empresas; a pesquisa interna seleciona até 200 por ordem.
+O snapshot e os históricos visíveis são limitados para evitar carregar toda a base;
+o histórico persistido não é apagado. Esta versão destina-se a um escritório privado
+com um CEO; autenticação por utilizador/organização e grande escala ficam futuras.
+
+### Persistência e preservação verificadas
+
+Migração aditiva SQLite v2 → v3: tabelas `crm_sources`, `crm_companies`,
+`crm_qualifications`, `crm_consents`, `crm_drafts`, `crm_activities`,
+`crm_handoffs`, `crm_verifications`, `crm_batches`, `crm_orders`,
+`crm_assignments`, `crm_source_usage`, mais índices. `Company` agrega Lead e
+SalesOpportunity para evitar duplicação. Usa a mesma ligação/SQLite, transações e
+savepoints; mantém identificadores das fases anteriores.
+
+Antes do reinício desta instância foi verificada ausência de tarefas em execução,
+criada cópia SQLite consistente em `/workspace/.agexa-backups/` e calculado um
+resumo criptográfico das tabelas anteriores. Após migração, todos os registos e
+IDs de `employees`, `tasks`, `settings`, `events`, `workflows` e `memories`
+permaneceram iguais. A base operacional não recebeu fixtures CRM. Backups e tokens
+ficam fora do Git; copiar com segurança antes de futuras intervenções.
+
+### IA, fontes e fases seguintes
+
+Não há configuração Ollama guardada, modelo selecionado nem serviço acessível em
+`127.0.0.1:11434` nesta instância. Nenhuma inferência real foi executada nem modelo
+descarregado. Os testes de Atlas/Maya e colaboração IA usam API HTTP de teste,
+identificada com `executionMode=test`; não comprovam qualidade de um modelo real.
+
+Com Ollama real, configurar serviço/modelo já autorizado na Central IA, verificar
+ligação, e executar tarefas IA na ficha ou operação Nexus. O modelo só devolve
+JSON validado; não recebe ferramentas de shell, envio, pagamentos ou administração.
+Dados de websites são não confiáveis. Contactos empresariais são omitidos do
+contexto CRM enviado ao modelo.
+
+CSV/listas funcionam nesta nuvem. URLs têm adaptador seguro, mas não foram validadas
+em sites externos reais: o transporte de proxy não garante DNS fixado e é recusado.
+OSM foi investigado sob ODbL, sem API ativada nem termos/quotas do operador assumidos.
+Ver [fontes e evidência](AGEXA_SOURCES.md).
+
+WhatsApp, envio após aceitação, recibos de entrega, bloqueio de automação após
+handoff, cadastro Base44 e pagamentos continuam para fases futuras com integração
+e autorização próprias. Não há processos de marcação de demonstrações.
+
+### Validação da Fase 4
+
+Executar com Node 22, sem reutilizar a base operacional nos testes:
+
+```bash
+npm run build
+npm run lint
+env -u AGEXA_DATA_DIR npm test
+npm run asyncapi:validate
+npm run test:smoke
+AGEXA_CHROMIUM_PATH=/usr/bin/chromium npm run test:agexa:e2e
+AGEXA_CHROMIUM_PATH=/usr/bin/chromium npm run test:agexa:intelligence:e2e
+AGEXA_CHROMIUM_PATH=/usr/bin/chromium npm run test:agexa:crm:e2e
+```
+
+O smoke requer o standalone na porta 3100. Os cenários Chromium criam servidores e
+bases temporárias próprias. O CRM e2e usa empresas fictícias explicitamente
+simuladas; o e2e de inteligência usa Ollama simulado. A variável
+`AGEXA_SCREENSHOT_DIR` guarda capturas desses cenários, sem tokens nos nomes/URLs
+mostrados. Ver [capturas no GitHub](screenshots/README.md).
+
+Resultados em 24/10/2026:
+
+- Build, tipos e lint aprovados. Mantêm-se os avisos anteriores de dependência de
+  useEffect, bundle acima de 500 kB e SQLite experimental.
+- **1.018 testes aprovados**: 196 interface + 815 servidor + 7 contratos do pacote.
+  São os 976 anteriores mais 42 testes CRM. Nenhuma suite antiga foi removida.
+- AsyncAPI válido, smoke HTTP/WebSocket e arranque após migração aprovados.
+- Chromium Fase 2: login privado, oito personagens, controlos, editor, suspensão,
+  persistência/reconexão e desktop/mobile aprovados.
+- Chromium Fase 3: nove pedidos a Ollama simulado, oito personagens com animações
+  ligadas ao backend e persistência/reconexão aprovados; sem inferência real.
+- Chromium Fase 4: CSV, duplicados, nota/consentimento separados, versões,
+  transições protegidas, Nexus, relatórios e reinício aprovados, desktop/mobile
+  sem transbordamento do painel. Dados empresariais exclusivamente simulados.
+- Operação CRM IA adicional em integração: oito funcionários, dez tarefas, sete
+  pedidos HTTP ao emulador, quatro versões internas em modo teste, zero envios.
+- Migração automatizada e comparação da base operacional confirmaram preservação
+  dos registos anteriores; sem fixtures na base operacional.
+- Licença e package-lock originais inalterados; nenhuma dependência adicionada.
+- VS Code/Claude E2E completo e restauração numa nova tarefa não foram executados.
+
+O `install_script` continua válido e inalterado. O `start_skill` do ambiente é
+atualizado para esta fase, com arranque, migração, limitações e checks. Guardar um
+rascunho e fazer push não publica o ambiente: rever/guardar nas definições e depois
+publicar pelo produto. Não foi anunciada publicação nem restauração futura validada.

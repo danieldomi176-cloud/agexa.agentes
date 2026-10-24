@@ -361,6 +361,7 @@
 }
 .agexa-office {
   flex: 1;
+  min-width: 0;
   min-height: 0;
   position: relative;
 }
@@ -643,4 +644,119 @@
 }
 .agexa-panel li {
   margin: 6px 0;
+}
+
+.agexa-panel.agexa-commercial {
+  width: min(880px, 65vw);
+}
+.crm-module h4 {
+  margin: 12px 0 6px;
+  font-size: 13px;
+  color: #d8c2fa;
+}
+.crm-filters,
+.crm-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+.crm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+.crm-scroll,
+.crm-kanban {
+  overflow: auto;
+  max-width: 100%;
+}
+.crm-scroll table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  text-align: left;
+}
+.crm-scroll td,
+.crm-scroll th {
+  padding: 8px;
+  border-bottom: 1px solid #42314e;
+  vertical-align: top;
+}
+.crm-kanban {
+  display: flex;
+  gap: 10px;
+  padding-bottom: 10px;
+}
+.crm-column {
+  flex: 0 0 190px;
+  min-height: 150px;
+  border: 1px solid #48345e;
+  border-radius: 6px;
+  padding: 8px;
+  background: #21182d;
+}
+.crm-lead {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin: 8px 0;
+  text-align: left;
+  white-space: normal;
+}
+.crm-detail {
+  border: 1px solid #775495;
+  border-radius: 8px;
+  padding: 14px;
+  margin-top: 16px;
+  background: #1b1426;
+}
+.crm-detail a {
+  color: #ceabff;
+  text-decoration: underline;
+}
+.crm-drafts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+.crm-metrics article {
+  padding: 12px;
+  background: #281d37;
+  border: 1px solid #5d3e7c;
+  border-radius: 6px;
+}
+.crm-metrics strong {
+  display: block;
+  font-size: 22px;
+  color: #c59bff;
+}
+.crm-metrics span {
+  font-size: 12px;
+}
+.crm-bar {
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) 1fr minmax(30px, auto);
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+  font-size: 11px;
+}
+.crm-bar meter {
+  width: 100%;
+}
+@media (max-width: 760px) {
+  .agexa-panel.agexa-commercial {
+    width: 100%;
+  }
+  .crm-filters {
+    grid-template-columns: 1fr 1fr;
+  }
+  .crm-drafts {
+    grid-template-columns: 1fr;
+  }
+  .crm-scroll table {
+    min-width: 560px;
+  }
 }

@@ -304,7 +304,17 @@ function Knowledge({
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          act('knowledge', value);
+          act('knowledge', {
+            ...value,
+            ...Object.fromEntries(
+              ['confirmedFeatures', 'approvedPrices', 'policies'].map((key) => [
+                key,
+                value[key as 'confirmedFeatures' | 'approvedPrices' | 'policies']
+                  .map((line) => line.trim())
+                  .filter(Boolean),
+              ]),
+            ),
+          });
         }}
       >
         <label>
@@ -337,7 +347,7 @@ function Knowledge({
               onChange={(e) =>
                 setValue({
                   ...value,
-                  [key]: e.target.value.split('\n').filter((line) => line.trim()),
+                  [key]: e.target.value.split('\n'),
                 })
               }
             />

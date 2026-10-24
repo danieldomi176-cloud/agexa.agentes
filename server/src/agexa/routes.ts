@@ -11,6 +11,8 @@ import {
   isAllowedWebSocketOrigin,
   standaloneHandshakeVerdict,
 } from '../wsAuth.js';
+import { CrmError } from './crm/error.js';
+import { registerCrmRoutes } from './crm/routes.js';
 import { SalesEngine, SalesError } from './engine.js';
 import { registerIntelligenceRoutes } from './intelligenceRoutes.js';
 
@@ -26,7 +28,7 @@ export async function registerSalesRoutes(
 ): Promise<void> {
   const { engine, token, allowedHosts } = options;
   app.get('/api/agexa/enabled', async (_request, reply) =>
-    reply.header('Cache-Control', 'no-store').send({ enabled: true, phase: 3 }),
+    reply.header('Cache-Control', 'no-store').send({ enabled: true, phase: 4 }),
   );
   await app.register(
     async (api) => {
@@ -44,7 +46,7 @@ export async function registerSalesRoutes(
       });
       api.setErrorHandler((error, _request, reply) => {
         const status =
-          error instanceof SalesError
+          error instanceof SalesError || error instanceof CrmError
             ? error.statusCode
             : (error as { validation?: unknown }).validation
               ? 400
@@ -60,6 +62,7 @@ export async function registerSalesRoutes(
       });
       api.get('/state', async () => engine.snapshot());
       registerIntelligenceRoutes(api, engine);
+      registerCrmRoutes(api, engine);
       api.get('/events', { websocket: true }, (socket) => {
         const send = (): void => {
           if (socket.readyState === 1) socket.send(JSON.stringify(engine.snapshot()));

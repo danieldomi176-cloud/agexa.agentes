@@ -15,7 +15,7 @@ const commercial = await fetch(`${base}/api/agexa/enabled`);
 assert.equal(commercial.status, 200);
 const capability = await commercial.json();
 assert.equal(capability.enabled, true);
-assert.equal(capability.phase, 3);
+assert.equal(capability.phase, 4);
 assert.equal((await fetch(`${base}/api/agexa/state`)).status, 401);
 await new Promise((resolve, reject) => {
   const ws = new WebSocket(`${base.replace('http:', 'ws:')}/ws`);

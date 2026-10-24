@@ -5,7 +5,13 @@ import { PLAN_ORDER } from '../../../core/src/intelligence.js';
 
 export async function mockOllama() {
   const calls: Array<{ employeeId: string; system: string; input: Record<string, unknown> }> = [];
-  const control = { mode: 'valid', delayMs: 0, failEmployee: '', models: ['agexa-test:tiny'] };
+  const control = {
+    draft: '',
+    mode: 'valid',
+    delayMs: 0,
+    failEmployee: '',
+    models: ['agexa-test:tiny'],
+  };
   const server = createServer(async (req, res) => {
     if (req.url === '/api/tags') {
       res.setHeader('Content-Type', 'application/json');
@@ -40,7 +46,7 @@ export async function mockOllama() {
       }
       const result: Record<string, unknown> = {
         summary: `RESULTADO SIMULADO: ${input.employeeId}`,
-        draft: '',
+        draft: control.draft,
         observations: ['Dados exclusivamente de teste'],
         nextActions: ['Revisão do CEO'],
       };

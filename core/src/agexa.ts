@@ -1,3 +1,4 @@
+import type { CrmSnapshot } from './crm.js';
 import type { IntelligenceSnapshot } from './intelligence.js';
 /** Commercial contracts are independent of the coding-provider protocol. */
 export const EMPLOYEES = [
@@ -20,7 +21,17 @@ export const EMPLOYEES = [
 export type EmployeeId = (typeof EMPLOYEES)[number]['id'];
 export const SALES_OBJECTIVE =
   'Encontrar oportunidades → conquistar interesse → explicar o Agexa → apresentar 7 dias grátis apenas após confirmação da oferta → enviar link confirmado após aceitação → transferir ao CEO';
-export type TaskKind = 'prepare_brief' | 'qualify_company' | 'sales_report' | 'ai_request';
+export type TaskKind =
+  | 'prepare_brief'
+  | 'qualify_company'
+  | 'sales_report'
+  | 'ai_request'
+  | 'crm_import'
+  | 'crm_qualify'
+  | 'crm_prepare'
+  | 'crm_report'
+  | 'crm_plan'
+  | 'crm_summary';
 export type TaskStatus =
   'queued' | 'running' | 'awaiting_approval' | 'blocked' | 'completed' | 'error' | 'cancelled';
 export type EmployeeStatus =
@@ -71,6 +82,7 @@ export interface SalesEvent {
   detail: string;
 }
 export interface SalesSnapshot {
+  crm?: CrmSnapshot;
   intelligence?: IntelligenceSnapshot;
   version: 1;
   suspended: boolean;
