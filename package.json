@@ -103,7 +103,7 @@
     "asyncapi:validate": "node scripts/validate-asyncapi.mjs",
     "check-types": "tsc --noEmit && tsc --noEmit -p server/tsconfig.test.json",
     "prepare": "husky",
-    "lint": "eslint adapters/vscode server core integrations/base44 --ignore-pattern integrations/base44/deploy && cd webview-ui && eslint .",
+    "lint": "eslint adapters/vscode server core integrations/base44 cloudflare/src --ignore-pattern integrations/base44/deploy && cd webview-ui && eslint .",
     "lint:fix": "eslint adapters/vscode server core --fix && cd webview-ui && eslint . --fix",
     "import-tileset": "tsx scripts/import-tileset-cli.ts",
     "format": "prettier --write \"adapters/vscode/**/*.ts\" \"server/**/*.ts\" \"core/src/**/*.ts\" \"webview-ui/src/**/*.{ts,tsx,css}\" \"*.{js,mjs}\" \"webview-ui/*.{js,ts}\"",
@@ -136,7 +136,9 @@
     "test:agexa:base44:e2e": "node scripts/agexa-base44-e2e.mjs",
     "test:agexa:ceo:e2e": "node --import tsx scripts/agexa-ceo-api-e2e.mjs",
     "start:hosted": "node dist/hosted.js",
-    "test:agexa:hosted:e2e": "node --import tsx scripts/agexa-ceo-api-e2e.mjs --hosted"
+    "test:agexa:hosted:e2e": "node --import tsx scripts/agexa-ceo-api-e2e.mjs --hosted",
+    "build:cloudflare": "node scripts/build-cloudflare.mjs",
+    "test:cloudflare": "npm exec -w server vitest run cloudflareRuntime"
   },
   "devDependencies": {
     "@asyncapi/modelina": "^5.10.1",

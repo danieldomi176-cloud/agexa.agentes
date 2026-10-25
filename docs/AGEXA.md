@@ -1201,3 +1201,17 @@ os hashes/IDs anteriores do SQLite coincidiram; nenhuma fixture na base operacio
 Próxima etapa: [instruções exatas para publicar o backend](AGEXA_STAGE1_DEPLOY.md).
 Contrato: [AGEXA_CEO_API.md](AGEXA_CEO_API.md). Não confundir a sessão de
 desenvolvimento, rascunho de ambiente ou testes locais com hospedagem permanente.
+
+### Autónomo V2 — adaptação Cloudflare preparada, não publicada
+
+Branch `agexa/autonomous-v2`, baseada na entrega stage-1-deploy. Auditoria,
+limitações Free e passos de promoção em [AGEXA_AUTONOMOUS_V2.md](AGEXA_AUTONOMOUS_V2.md).
+O Worker adapta as tarefas existentes para D1, reutilizando contratos/prompts e
+validação, sem transportar Node/SQLite nativo/processos. Cron, leases, quotas,
+pausa/stop e colaboração dos oito agentes estão preparados; pesquisa sem ferramenta
+fica bloqueada. AI.run real depende de conta/bindings/modelo gratuito confirmado.
+Não houve inferência Cloudflare, deploy, contacto WhatsApp ou integração Base44 real.
+Exportação privada consistente conserva a origem; D1 só pode ser promovido depois
+de comparar todos os dados. O painel alternativo usa sprites originais; o editor/
+canvas completos permanecem no Node, sem alegar que foram portados. CPU Free de
+10 ms requer medição no serviço. Não ativar faturação para contornar limites.

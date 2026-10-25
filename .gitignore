@@ -57,3 +57,8 @@ messaging-auth/
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
+
+# Cloudflare local output and state; never commit data exports or credentials
+cloudflare/dist/
+cloudflare/public/
+cloudflare/.wrangler/

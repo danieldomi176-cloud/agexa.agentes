@@ -1,0 +1,12 @@
+{
+ "name":"agexa-autonomous-v2",
+ "main":"src/index.ts",
+ "compatibility_date":"2026-10-01",
+ "workers_dev":false,
+ "preview_urls":false,
+ "assets":{"directory":"./public","binding":"ASSETS","run_worker_first":true},
+ "ai":{"binding":"AI"},
+ "vars":{"AUTONOMY_ENABLED":"false","AI_MODEL":"","FREE_ACCOUNT_CONFIRMED":"false","FREE_MODEL_CONFIRMED":"false","DAILY_CALLS":"5","ACCESS_TEAM":"","ACCESS_AUD":"","CEO_SUBJECTS":""},
+ "d1_databases":[{"binding":"DB","database_name":"agexa-office","database_id":"OWNER_MUST_SET_REAL_DATABASE_ID","migrations_dir":"migrations"}],
+ "triggers":{"crons":[]}
+}
